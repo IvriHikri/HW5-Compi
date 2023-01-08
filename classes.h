@@ -2,6 +2,7 @@
 #define CLASSES_H
 
 #include "hw3_output.hpp"
+#include "llvm_comp.hpp"
 #include <vector>
 #include <string>
 #include <list>
@@ -53,7 +54,8 @@ class FormalsList;
 class Id : public Node
 {
 public:
-    Id(string value) : Node(value) {}
+    string var_name;
+    Id(string value,string Var_name) : Node(value),var_name("") {}
 };
 
 class Program : public Node
@@ -106,6 +108,7 @@ public:
 class Exp : public Node
 {
 public:
+    string var_name;
     // (Exp)
     Exp(Exp *exp);
 

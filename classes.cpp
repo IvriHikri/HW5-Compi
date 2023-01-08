@@ -4,6 +4,8 @@ static list<Table *> symbolTables = list<Table *>();
 static stack<int> offset = stack<int>();
 static int in_while = 0;
 static string currentFunction = "";
+static LLVM_Comp comp;
+CodeBuffer cb = CodeBuffer::instance();
 
 string convertToString(Var_Type t)
 {
@@ -249,6 +251,7 @@ Statement::Statement(Type *t, Id *symbol)
         errorDef(yylineno, symbol->value);
     }
     symbol->type = t->type;
+    symbol->var_name = comp.freshVar();
     string emptyVal = "";
     addSymbol(symbol, emptyVal);
 }
@@ -266,6 +269,7 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
     }
 
     symbol->type = t->type;
+    symbol->var_name = comp.freshVar();
     addSymbol(symbol, exp->value);
 }
 
@@ -282,6 +286,7 @@ Statement::Statement(Id *symbol, Exp *exp)
     {
         errorMismatch(yylineno);
     }
+    symbol->var_name = comp.freshVar();
 }
 
 // return Exp;
@@ -354,7 +359,7 @@ Call::Call(Id *symbol)
     this->type = ent->getReturnValue();
 }
 
-Call::Call(Id *symbol, Explist *exp_list) // printi(func) EXP->CALL --- CALL -> ID(EXP) --- EXP->ID
+Call::Call(Id *symbol, Explist *exp_list)
 {
     TableEntry *ent = getTableEntry(symbol->value);
     if (ent == nullptr || !ent->getIsFunc())
@@ -403,6 +408,7 @@ Exp::Exp(Exp *exp)
 {
     this->value = exp->value;
     this->type = exp->type;
+    this->var_name = exp->var_name;
 }
 
 // Exp IF EXP else EXP
@@ -410,10 +416,6 @@ Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
 {
     if (e2->type != V_BOOL || (e1->type != e3->type && !((e1->type == V_BYTE && e3->type == V_INT) || (e1->type == V_INT && e3->type == V_BYTE))))
     {
-       /* cout << "e1 type: " << convertToString(e1->type) << " e2 type: " << convertToString(e2->type) << " e3 type " << convertToString(e3->type) << endl;
-        cout << "e1 is " << e1->value << endl;
-        cout << "e2 is " << e2->value << endl;
-        cout << "e3 is " << e3->value << endl;*/
         errorMismatch(yylineno);
     }
 
@@ -442,12 +444,14 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
     else
         this->type = V_BYTE;
     this->value = e1->value + " " + n->value + " " + e2->value;
+    this->var_name = comp.freshVar();
+    string to_emit = this->var_name + ":=" + e1->var_name + n->value + e2->var_name;
+    cb.emit(to_emit);
 }
 
 // EXP AND/OR/RELOP EXP
 Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
 {
-    //cout << e1->value << " " << n1->value << " " << e2->value << endl;
     this->type = V_BOOL;
     if (e1->type == V_BOOL && e2->type == V_BOOL)
     {
@@ -499,7 +503,6 @@ Exp::Exp(Call *c)
 // ID
 Exp::Exp(Id *id)
 {
-    //cout << "im here with id: " << id->value << endl;
     TableEntry *ent = getTableEntry(id->value);
     if (ent == nullptr || ent->getIsFunc())
     {
@@ -507,6 +510,7 @@ Exp::Exp(Id *id)
     }
     this->value = ent->getName();
     this->type = ent->getTypes()[0];
+    this->var_name = id->var_name;
 }
 
 // TRUE/FALSE/NUM/STRING
@@ -521,6 +525,8 @@ Exp::Exp(Node *n)
     {
         this->value = n->value;
         this->type = V_INT;
+        this->var_name = comp.freshVar();
+        cb.emit(this->var_name + ":=" + n->value);
     }
     else if (n->type == V_STRING)
     {
@@ -540,6 +546,9 @@ Exp::Exp(Node *n1, Node *n2)
         errorByteTooLarge(yylineno, n1->value);
 
     this->value = n1->value;
+    this->var_name = comp.freshVar();
+    string code = this->var_name + ":=" + n1->value;
+    cb.emit(code);
 }
 
 /****************************************   FORMAL_DECLERATION   ****************************************/
