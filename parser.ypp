@@ -1,0 +1,110 @@
+%{
+        #include <stdio.h>
+        #include "hw3_output.hpp"
+        #include "classes.h"
+        #include <iostream>
+        #include <stdlib.h>
+
+        using namespace std;
+        using namespace output;
+
+	extern int yylex();
+        extern int yylineno;
+	int yyerror(const char * message);
+%}
+
+%nonassoc VOID INT BYTE B BOOL
+%right ID NUM STRING
+%right ASSIGN
+%left OR AND
+%nonassoc TRUE FALSE RETURN IF WHILE BREAK CONTINUE COMMA 
+%left RELOP_EQ RELOP BINOP BINOP_MUL_DIV
+%right NOT
+%left LPAREN RPAREN LBRACE RBRACE SC
+%nonassoc ELSE
+
+%%
+
+Program :  Funcs {if(yychar==YYEOF) {closeGlobalScope();} else {errorSyn(yylineno);}}
+
+Funcs   :/* Epsilon */ 
+        |FuncDecl Funcs
+
+FuncDecl:RetType ID LPAREN Formals RPAREN {declareFunction((Type*)$1, (Id*)$2, (Formals*)$4);} LBRACE Statements RBRACE {setCurrFunction(); closeScope();} 
+
+RetType :Type {$$ = new Type((Type*)$1);}
+        |VOID {$$ = new Type(V_VOID);}
+ 
+Formals :/* Epsilon */ {$$ = new Formals();}
+        |FormalsList {$$ = new Formals((FormalsList*)$1);}
+
+FormalsList : FormalDecl {$$ = new FormalsList((FormalDecl*)$1);} 
+            | FormalDecl COMMA FormalsList {$$ = new FormalsList((FormalDecl*)$1, (FormalsList*)$3);}
+
+FormalDecl  :Type ID {$$ = new FormalDecl((Type*)$1, (Id*)$2);}
+
+Statements  :Statement
+            |Statements Statement
+
+Statement   :LBRACE OPEN_SCOPE Statements CLOSE_SCOPE RBRACE
+        |Type ID SC {$$ = new Statement((Type*)$1,(Id*)$2);}
+        |Type ID ASSIGN Exp SC {$$ = new Statement((Type*)$1,(Id*)$2,(Exp*)$4);}
+        |ID ASSIGN Exp SC {$$ = new Statement((Id*)$1,(Exp*)$3);}
+        |Call SC {$$ = new Statement((Call*)$1);}
+        |RETURN SC {$$ = new Statement($1);}
+        |RETURN Exp SC {$$ = new Statement($1,(Exp*)$2);}
+        |IF LPAREN IS_EXP_BOOL RPAREN OPEN_SCOPE Statement CLOSE_SCOPE {} %prec IF
+        |IF LPAREN IS_EXP_BOOL RPAREN OPEN_SCOPE Statement CLOSE_SCOPE ELSE  OPEN_SCOPE Statement CLOSE_SCOPE {} %prec IF 
+        |WHILE LPAREN IS_EXP_BOOL RPAREN WHILE_M_START Statement WHILE_M_FINISH {}
+        |BREAK SC {$$ = new Statement($1);}
+        |CONTINUE SC {$$ = new Statement($1);}
+
+IS_EXP_BOOL : Exp {checkExpBool((Exp*)$1);}
+
+WHILE_M_START : /*epsilon*/ {start_while(); openScope();}
+WHILE_M_FINISH: /*epsilon*/ {finish_while(); closeScope();}
+
+Call    :ID LPAREN ExpList RPAREN {$$ = new Call((Id*)$1,(Explist*)$3);}
+        |ID LPAREN RPAREN {$$ = new Call((Id*)$1);}
+
+ExpList :Exp {$$ = new Explist((Exp*)$1);}
+        |Exp COMMA ExpList {$$ = new Explist((Exp*)$1, (Explist*)$3);}
+
+Type    :INT {$$ = new Type(V_INT);}
+        |BYTE {$$ = new Type(V_BYTE);}
+        |BOOL {$$ = new Type(V_BOOL);}
+
+Exp :LPAREN Exp RPAREN {$$ = new Exp ((Exp*)$2);}
+    |Exp IF LPAREN Exp RPAREN ELSE Exp {$$ = new Exp ((Exp*)$1, (Exp*)$4, (Exp*)$7);} %prec IF
+    |Exp BINOP Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);}
+    |Exp BINOP_MUL_DIV Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);}
+    |ID {$$ = new Exp ((Id*)$1);}
+    |Call {$$ = new Exp ((Call*)$1);}
+    |NUM {$$ = new Exp ($1);}
+    |NUM B {$$ = new Exp ($1, $2);}
+    |STRING {$$ = new Exp ($1);}
+    |TRUE {$$ = new Exp ($1);}
+    |FALSE {$$ = new Exp ($1);}
+    |NOT Exp {$$ = new Exp ($1, (Exp*)$2);}
+    |Exp AND Exp {$$ = new Exp(V_BOOL, (Exp*)$1, $2, (Exp*)$3);}
+    |Exp OR Exp {$$ = new Exp(V_BOOL, (Exp*)$1, $2, (Exp*)$3);}
+    |Exp RELOP Exp {$$ = new Exp (V_BOOL, (Exp*)$1, $2, (Exp*)$3);}
+    |Exp RELOP_EQ Exp {$$ = new Exp (V_BOOL, (Exp*)$1, $2, (Exp*)$3);}
+    |LPAREN Type RPAREN Exp {$$ = new Exp ((Type*)$2,(Exp*)$4);}
+
+
+OPEN_SCOPE : /*epsilon */ {openScope();}
+CLOSE_SCOPE: /*epsilon */ {closeScope();}
+%%
+
+int main()
+{
+        openScope();
+        int result = yyparse();
+        return result;
+}
+
+int yyerror(const char * message)
+{
+	errorSyn(yylineno);
+}
