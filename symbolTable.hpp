@@ -75,7 +75,7 @@ void start_while();
 void finish_while();
 void checkExpBool(Exp *exp);
 void setCurrFunction(string newFunc = "");
-
+bool isValidTypesOperation(Var_Type type1, Var_Type type2);
 
 /// Semantic Utilities ///
 

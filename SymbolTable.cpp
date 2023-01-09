@@ -1,7 +1,5 @@
 #include "symbolTable.hpp"
 
-
-
 string convertToString(Var_Type t)
 {
     string s;
@@ -195,4 +193,23 @@ void checkExpBool(Exp *exp)
 void setCurrFunction(string newFunc)
 {
     currentFunction = newFunc;
+}
+
+void start_while()
+{
+    in_while++;
+}
+void finish_while()
+{
+    in_while--;
+}
+
+bool isValidTypesOperation(Var_Type type1, Var_Type type2)
+{
+    if (!(type1 == V_INT || type1 == V_BYTE) && !(type2 == V_INT || type2 == V_BYTE))
+    {
+        return false;
+    }
+
+    return true;
 }

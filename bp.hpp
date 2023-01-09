@@ -60,5 +60,7 @@ public:
 
 };
 
+CodeBuffer cb = CodeBuffer::instance();
+
 #endif
 

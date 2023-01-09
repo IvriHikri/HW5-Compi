@@ -12,16 +12,6 @@ extern int yylineno;
 using namespace output;
 using namespace std;
 
-enum Var_Type
-{
-    V_INT,
-    V_VOID,
-    V_BOOL,
-    V_BYTE,
-    V_STRING,
-    UNDEFINED
-};
-
 class Node
 {
 public:

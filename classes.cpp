@@ -3,7 +3,6 @@
 /* Semantic Checkings*/
 
 static LLVM_Comp comp;
-CodeBuffer cb = CodeBuffer::instance();
 
 /****************************************   TYPE   ****************************************/
 
@@ -236,7 +235,7 @@ Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
 // EXP BINOP EXP
 Exp::Exp(Exp *e1, Node *n, Exp *e2)
 {
-    if ((e1->type != V_INT && e1->type != V_BYTE) || (e2->type != V_INT && e2->type != V_BYTE))
+    if (!isValidTypesOperation(e1->type, e2->type))
     {
         errorMismatch(yylineno);
     }
@@ -245,9 +244,26 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
         this->type = V_INT;
     else
         this->type = V_BYTE;
+
+    string var_name1 = e1->var_name;
+    string var_name2 = e2->var_name;
+
+    if (this->type == V_INT)
+    {
+        if (e1->type == V_BYTE)
+        {
+            var_name1 = comp.makeZext(var_name1, "i8", "i32");
+        }
+        if (e2->type == V_BYTE)
+        {
+            var_name2 = comp.makeZext(var_name2, "i8", "i32");
+        }
+    }
+
+    string op = comp.whichOP(n->value);
     this->value = e1->value + " " + n->value + " " + e2->value;
     this->var_name = comp.freshVar();
-    string to_emit = this->var_name + ":=" + e1->var_name + n->value + e2->var_name;
+    string to_emit = this->var_name + "= " + op + " " + comp.operationSize(this->type) + " " + var_name1 + " , " + var_name2;
     cb.emit(to_emit);
 }
 
@@ -263,7 +279,7 @@ Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
         }
         this->value = "EXP AND/OR EXP";
     }
-    else if ((e1->type == V_INT || e1->type == V_BYTE) && (e2->type == V_INT || e2->type == V_BYTE))
+    else if (isValidTypesOperation(e1->type, e2->type))
     {
         this->value = "EXP RELOP EXP";
     }
@@ -386,11 +402,4 @@ Formals::Formals(FormalsList *f_list)
     this->type = UNDEFINED;
 }
 
-void start_while()
-{
-    in_while++;
-}
-void finish_while()
-{
-    in_while--;
-}
+/**/

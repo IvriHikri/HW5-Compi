@@ -1,7 +1,7 @@
 %{
         #include <stdio.h>
         #include "hw3_output.hpp"
-        #include "classes.h"
+        #include "symbolTable.h"
         #include <iostream>
         #include <stdlib.h>
 
