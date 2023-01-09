@@ -16,7 +16,7 @@ class LLVM_Comp
 public:
     LLVM_Comp() : curr_reg(0) {}
 
-    string freshVar() { return "t" + to_string(curr_reg++); }
+    string freshVar() { return "%t" + to_string(curr_reg++); }
     int get_curr_reg() { return curr_reg; }
 };
 
