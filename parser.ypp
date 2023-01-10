@@ -2,6 +2,7 @@
         #include <stdio.h>
         #include "hw3_output.hpp"
         #include "symbolTable.h"
+
         #include <iostream>
         #include <stdlib.h>
 
@@ -74,23 +75,23 @@ Type    :INT {$$ = new Type(V_INT);}
         |BYTE {$$ = new Type(V_BYTE);}
         |BOOL {$$ = new Type(V_BOOL);}
 
-Exp :LPAREN Exp RPAREN {$$ = new Exp ((Exp*)$2);}
+Exp :LPAREN Exp RPAREN {$$ = $2;}//
     |Exp IF LPAREN Exp RPAREN ELSE Exp {$$ = new Exp ((Exp*)$1, (Exp*)$4, (Exp*)$7);} %prec IF
-    |Exp BINOP Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);}
-    |Exp BINOP_MUL_DIV Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);}
+    |Exp BINOP Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //
+    |Exp BINOP_MUL_DIV Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //
     |ID {$$ = new Exp ((Id*)$1);}
-    |Call {$$ = new Exp ((Call*)$1);}
-    |NUM {$$ = new Exp ($1);}
-    |NUM B {$$ = new Exp ($1, $2);}
-    |STRING {$$ = new Exp ($1);}
-    |TRUE {$$ = new Exp ($1);}
-    |FALSE {$$ = new Exp ($1);}
-    |NOT Exp {$$ = new Exp ($1, (Exp*)$2);}
-    |Exp AND Exp {$$ = new Exp(V_BOOL, (Exp*)$1, $2, (Exp*)$3);}
-    |Exp OR Exp {$$ = new Exp(V_BOOL, (Exp*)$1, $2, (Exp*)$3);}
-    |Exp RELOP Exp {$$ = new Exp (V_BOOL, (Exp*)$1, $2, (Exp*)$3);}
-    |Exp RELOP_EQ Exp {$$ = new Exp (V_BOOL, (Exp*)$1, $2, (Exp*)$3);}
-    |LPAREN Type RPAREN Exp {$$ = new Exp ((Type*)$2,(Exp*)$4);}
+    |Call {$$ = $1;}
+    |NUM {$$ = new Exp ($1);} //
+    |NUM B {$$ = new Exp ($1, $2);} // 
+    |STRING {$$ = new Exp ($1);} //
+    |TRUE {$$ = new Exp ($1);} //
+    |FALSE {$$ = new Exp ($1);} //
+    |NOT Exp {$$ = new Exp ($1, (Exp*)$2);}//
+    |Exp {comp.CreateBranch($1);comp.AddLabelAfterExpression($1);} AND Exp {$$ = new Exp(V_BOOL, (Exp*)$1, $3, (Exp*)$4);} //
+    |Exp {comp.CreateBranch($1);comp.AddLabelAfterExpression($1);} OR Exp {$$ = new Exp(V_BOOL, (Exp*)$1, $3, (Exp*)$4);} //
+    |Exp RELOP Exp {$$ = new Exp (V_BOOL, (Exp*)$1, $2, (Exp*)$3);}//
+    |Exp RELOP_EQ Exp {$$ = new Exp (V_BOOL, (Exp*)$1, $2, (Exp*)$3);}//
+    |LPAREN Type RPAREN Exp {$$ = new Exp ((Type*)$2,(Exp*)$4);} //
 
 
 OPEN_SCOPE : /*epsilon */ {openScope();}
@@ -101,6 +102,7 @@ int main()
 {
         openScope();
         int result = yyparse();
+        cb.printCodeBuffer();
         return result;
 }
 

@@ -1,9 +1,5 @@
 #include "symbolTable.hpp"
-
-/* Semantic Checkings*/
-
-static LLVM_Comp comp;
-
+#include "llvm_comp.hpp"
 /****************************************   TYPE   ****************************************/
 
 Type::Type(Type *t)
@@ -205,12 +201,12 @@ Explist::Explist(Exp *exp, Explist *exp_list)
 /****************************************   EXP   ****************************************/
 
 // (Exp)
-Exp::Exp(Exp *exp)
+/*Exp::Exp(Exp *exp)
 {
     this->value = exp->value;
     this->type = exp->type;
     this->var_name = exp->var_name;
-}
+}*/
 
 // Exp IF EXP else EXP
 Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
@@ -252,19 +248,22 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
     {
         if (e1->type == V_BYTE)
         {
-            var_name1 = comp.makeZext(var_name1, "i8", "i32");
+            var_name1 = comp.makeTruncZext(var_name1, "i8", "i32","zext");
         }
         if (e2->type == V_BYTE)
         {
-            var_name2 = comp.makeZext(var_name2, "i8", "i32");
+            var_name2 = comp.makeTruncZext(var_name2, "i8", "i32","zext");
         }
     }
-
-    string op = comp.whichOP(n->value);
+    
     this->value = e1->value + " " + n->value + " " + e2->value;
+
     this->var_name = comp.freshVar();
-    string to_emit = this->var_name + "= " + op + " " + comp.operationSize(this->type) + " " + var_name1 + " , " + var_name2;
+    string op = comp.whichOP(n->value, this->type);
+    string to_emit = this->var_name + "= " + op + " " + comp.operationSize(this->type) + " " + var_name1 + ", " + var_name2;
     cb.emit(to_emit);
+
+    /*NEED TO CHECK DIV BY ZERO*/
 }
 
 // EXP AND/OR/RELOP EXP
@@ -277,11 +276,19 @@ Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
         {
             errorMismatch(yylineno);
         }
-        this->value = "EXP AND/OR EXP";
+
+        if(n1->value.compare("and") == 0)
+        {
+            comp.AndExp(this,e1, e2);
+        }
+        else
+        {
+            comp.OrExp(this,e1, e2);
+        }
     }
     else if (isValidTypesOperation(e1->type, e2->type))
-    {
-        this->value = "EXP RELOP EXP";
+    { // RELOP
+        comp.RelopExp(this, e1, e2, n1->value);
     }
     else
     {
@@ -292,11 +299,17 @@ Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
 // NOT EXP
 Exp::Exp(Node *n, Exp *e)
 {
-    if (e->type != V_BOOL || n->value.compare("not") != 0)
+    if (e->type != V_BOOL)
         errorMismatch(yylineno);
 
     this->type = V_BOOL;
-    this->value = "NOT EXP";
+    if(comp.isBoolLiteral(n->value))
+    {
+        this->value = n->value == "true" ? "false" : "true";
+    }
+
+    this->truelist = e->falselist;
+    this->falselist = e->truelist;
 }
 
 // (TYPE) EXP
@@ -304,19 +317,37 @@ Exp::Exp(Type *t, Exp *e)
 {
     if (t->type != e->type)
     {
-        if (!(t->type == V_BYTE && e->type == V_INT) && !(t->type == V_INT && e->type == V_BYTE))
+        if (!isValidTypesOperation(t->type, e->type))
             errorMismatch(yylineno);
     }
+
     this->type = t->type;
     this->value = e->value;
+    this->truelist = e->truelist;
+    this->falselist = e->falselist;
+    this->nextlist = e->nextlist;
+
+    string v_name = e->var_name;
+    if(t->type == V_INT && e->type == V_BYTE)
+    {
+        this->var_name = comp.makeTruncZext(e->var_name, comp.operationSize(e->type), comp.operationSize(t->type), "trunc");
+    }
+    else if (t->type == V_BYTE && e->type == V_INT)
+    {
+        this->var_name = comp.makeTruncZext(e->var_name, comp.operationSize(e->type), comp.operationSize(t->type), "zext");
+    }
+    else
+    {
+        this->var_name = e->var_name;
+    }
 }
 
 // Call
-Exp::Exp(Call *c)
+/*Exp::Exp(Call *c)
 {
     this->type = c->type;
     this->value = c->value;
-}
+}*/
 
 // ID
 Exp::Exp(Id *id)
@@ -335,21 +366,33 @@ Exp::Exp(Id *id)
 Exp::Exp(Node *n)
 {
     this->value = n->value;
-    if (n->value.compare("true") == 0 || n->value.compare("false") == 0)
+    if (comp.isBoolLiteral(n->value))
     {
         this->type = V_BOOL;
+        this->value = n->value;
+        this->var_name = comp.freshVar();
+        string val = (n->value.compare("true") == 0) ? "1" : "0";
+        string to_emit = this->var_name + "= i1 " + val;
     }
     else if (n->type == V_INT)
     {
         this->value = n->value;
         this->type = V_INT;
         this->var_name = comp.freshVar();
-        cb.emit(this->var_name + ":=" + n->value);
+        cb.emit(this->var_name + "= i32 " + n->value);
     }
     else if (n->type == V_STRING)
     {
         this->value = n->value;
         this->type = V_STRING;
+        string global_name = comp.globalFreshVar();
+        string str = n->value.erase(n->value.size() - 1); // delete end "
+        string to_emit = global_name + "= internal constant [" + to_string(str.size() + 1) + " x i8] c" + n->value + "\00\"";
+        cb.emitGlobal(to_emit);
+
+        this->var_name = comp.freshVar();
+        to_emit = this->var_name + " getelementptr [" + to_string(str.size() + 1) + " x i8], [" + to_string(str.size() + 1) + " x i8]* " + global_name + ", i32 0, i32 0";
+        cb.emit(to_emit);
     }
 }
 
@@ -365,7 +408,7 @@ Exp::Exp(Node *n1, Node *n2)
 
     this->value = n1->value;
     this->var_name = comp.freshVar();
-    string code = this->var_name + ":=" + n1->value;
+    string code = this->var_name + "= i8 " + n1->value;
     cb.emit(code);
 }
 
