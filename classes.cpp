@@ -96,6 +96,9 @@ Statement::Statement(Node *symbol, Exp *exp)
         {
             errorMismatch(yylineno);
         }
+        string type = comp.operationSize(exp->type);
+        string to_emit = "ret " + type + " " + exp->var_name;
+        cb.emit(to_emit);
     }
 }
 
@@ -201,12 +204,12 @@ Explist::Explist(Exp *exp, Explist *exp_list)
 /****************************************   EXP   ****************************************/
 
 // (Exp)
-/*Exp::Exp(Exp *exp)
+Exp::Exp(Exp *exp)
 {
     this->value = exp->value;
     this->type = exp->type;
     this->var_name = exp->var_name;
-}*/
+}
 
 // Exp IF EXP else EXP
 Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
@@ -215,7 +218,6 @@ Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
     {
         errorMismatch(yylineno);
     }
-
     if (e1->type == e3->type)
     {
         this->type = e1->type;
@@ -223,9 +225,16 @@ Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
     else if ((e1->type == V_BYTE && e3->type == V_INT) || (e1->type == V_INT && e3->type == V_BYTE))
     {
         this->type = V_INT;
+        if(e1->type == V_BYTE)
+        {
+            e1->var_name = comp.makeTruncZext(e1->var_name, "i8", "i32", "zext");
+        }
+        if(e3->type == V_BYTE)
+        {
+            e3->var_name = comp.makeTruncZext(e3->var_name, "i8", "i32", "zext");
+        }
     }
-
-    this->value = e1->value + " OR " + e3->value;
+    comp.ExpIfExpElseExp(this,e1,e2,e3);
 }
 
 // EXP BINOP EXP
@@ -343,11 +352,11 @@ Exp::Exp(Type *t, Exp *e)
 }
 
 // Call
-/*Exp::Exp(Call *c)
+Exp::Exp(Call *c)
 {
     this->type = c->type;
     this->value = c->value;
-}*/
+}
 
 // ID
 Exp::Exp(Id *id)

@@ -149,3 +149,21 @@ string LLVM_Comp::makeTruncZext(std::string var_name, std::string cur_size, std:
     cb.emit(to_emit);
     return new_var;
 }
+
+void LLVM_Comp::ExpIfExpElseExp(Exp* exp, Exp* e1, Exp* e2, Exp* e3)
+{
+    exp->var_name = freshVar();
+    string type = operationSize(exp->type);
+    CreateBranch(e2);
+    AddLabelAfterExpression(e2);
+    cb.bpatch(e2->truelist, e2->label);
+    string to_emit = exp->var_name + " = " + type + " " + e1->var_name;
+    cb.emit(to_emit);
+    int location = cb.emit ("br label @");
+    string false_label = cb.genLabel();
+    cb.bpatch(e2->falselist, false_label);
+    to_emit = exp->var_name + " = " + type + " " + e3->var_name;
+    cb.emit(to_emit);
+    string next_label = cb.genLabel();
+    cb.bpatch(cb.makelist({location, FIRST}),next_label);
+}

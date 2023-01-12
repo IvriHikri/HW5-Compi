@@ -30,6 +30,7 @@ public:
     void AndExp(Exp *exp, Exp *e1, Exp *e2);
     void OrExp(Exp *exp, Exp *e1, Exp *e2);
     void RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel);
+    void ExpIfExpElseExp(Exp* exp, Exp* e1, Exp* e2, Exp* e3);
 };
 
 static LLVM_Comp comp;
