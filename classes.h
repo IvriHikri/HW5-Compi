@@ -2,6 +2,7 @@
 #define CLASSES_H
 
 #include "hw3_output.hpp"
+#include "bp.hpp"
 #include <vector>
 #include <string>
 #include <list>
@@ -60,6 +61,7 @@ class Id : public Node
 {
 public:
     string var_name;
+    Id(string value) : Node(value) {}
     Id(string value,string Var_name) : Node(value),var_name("") {}
 };
 
