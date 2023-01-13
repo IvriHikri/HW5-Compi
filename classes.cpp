@@ -118,6 +118,7 @@ Statement::Statement(Node *symbol)
         {
             errorMismatch(yylineno);
         }
+        string to_emit = "ret void";
     }
     else if (symbol->value.compare("break") == 0)
     {

@@ -52,7 +52,7 @@ Statement   :LBRACE OPEN_SCOPE Statements CLOSE_SCOPE RBRACE
         |Type ID ASSIGN Exp SC {$$ = new Statement((Type*)$1,(Id*)$2,(Exp*)$4);}
         |ID ASSIGN Exp SC {$$ = new Statement((Id*)$1,(Exp*)$3);}
         |Call SC {$$ = new Statement((Call*)$1);}
-        |RETURN SC {$$ = new Statement($1);}
+        |RETURN SC {$$ = new Statement($1);} //
         |RETURN Exp SC {$$ = new Statement($1,(Exp*)$2);} //
         |IF LPAREN IS_EXP_BOOL RPAREN OPEN_SCOPE Statement CLOSE_SCOPE {} %prec IF
         |IF LPAREN IS_EXP_BOOL RPAREN OPEN_SCOPE Statement CLOSE_SCOPE ELSE  OPEN_SCOPE Statement CLOSE_SCOPE {} %prec IF 
