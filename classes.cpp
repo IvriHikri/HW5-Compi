@@ -64,10 +64,15 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
     {
         errorMismatch(yylineno);
     }
-
     symbol->type = t->type;
     symbol->var_name = comp.freshVar();
+    if(t->type != V_INT)
+    {
+        symbol->var_name = comp.makeTruncZext(symbol->var_name, comp.operationSize(symbol->type), "i32", "zext");
+    }
     addSymbol(symbol, exp->value);
+    string to_emit = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
+    cb.emit(to_emit);
 }
 
 // ID = Exp;
@@ -210,6 +215,9 @@ Exp::Exp(Exp *exp)
     this->value = exp->value;
     this->type = exp->type;
     this->var_name = exp->var_name;
+    this->falselist = exp->falselist;
+    this->truelist = exp->truelist;
+    this->nextlist = exp->nextlist;
 }
 
 // Exp IF EXP else EXP
