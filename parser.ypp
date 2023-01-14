@@ -31,7 +31,7 @@ Program :  Funcs {if(yychar==YYEOF) {closeGlobalScope();} else {errorSyn(yylinen
 Funcs   :/* Epsilon */ 
         |FuncDecl Funcs
 
-FuncDecl:RetType ID LPAREN Formals RPAREN {comp.declareFunc((Type*)$1, (Id*)$2, (Formals*)$4);} LBRACE Statements RBRACE {comp.closeFunc((Type*)$1); setCurrFunction(); closeScope();} //
+FuncDecl:RetType ID LPAREN Formals RPAREN {comp.declareFunc((Type*)$1, (Id*)$2, (Formals*)$4);} LBRACE Statements RBRACE {comp.closeFunction((Type*)$1); setCurrFunction(); closeScope();} //
 
 RetType :Type {$$ = new Type((Type*)$1);}
         |VOID {$$ = new Type(V_VOID);}
