@@ -59,10 +59,8 @@ class FormalsList;
 
 class Id : public Node
 {
-public:
-    string var_name;
+    public:
     Id(string value) : Node(value) {}
-    Id(string value,string Var_name) : Node(value),var_name("") {}
 };
 
 class Program : public Node
