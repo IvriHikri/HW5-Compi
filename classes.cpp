@@ -1,4 +1,4 @@
-#include "symbolTable.hpp"
+#include "classes.h"
 #include "llvm_comp.hpp"
 /****************************************   TYPE   ****************************************/
 
@@ -411,7 +411,22 @@ Exp::Exp(Id *id)
     }
     this->value = ent->getName();
     this->type = ent->getTypes()[0];
-    this->var_name = ent->getVarName();
+    int offset = ent->getOffset();
+    if (offset < 0)
+    {
+        this->var_name = "%" + to_string(-offset-1);
+    }
+    else
+    {
+        this->var_name = comp.freshVar();
+        std::string code = this->var_name + " = load i32 , i32* " + ent->getVarName();
+        comp.emit(code);
+        if (comp.operationSize(this->type) != "i32")
+        {
+            this->var_name = comp.makeTruncZext(this->var_name, "i32", comp.operationSize(this->type), "trunc");
+        }
+    }
+    cout << this->value << " is in offset " << ent->getOffset() << endl;
 }
 
 // TRUE/FALSE/NUM/STRING

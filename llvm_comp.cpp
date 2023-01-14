@@ -169,7 +169,6 @@ string LLVM_Comp::makeTruncZext(std::string var_name, std::string cur_size, std:
 
 void LLVM_Comp::declareFunc(Type *type, Id *id, Formals *formals)
 {
-    // cout << "before declaring " << id->value << endl;
     sym.declareFunction(type->type, id, formals);
     string code = "define " + operationSize(type->type) + " @" + id->value + "(";
     if (!formals->declaration.empty())
@@ -185,10 +184,8 @@ void LLVM_Comp::declareFunc(Type *type, Id *id, Formals *formals)
     cb.emit(code);
 
     this->stack_for_function = this->freshVar() + "_" + sym.currentFunction;
-    cout << "curr reg is " << curr_reg << " after " << sym.currentFunction << endl;
     code = this->stack_for_function + " = alloca i32, i32 50";
     cb.emit(code);
-    // cout << "emited decleration of " << id->value << endl;
 }
 
 void LLVM_Comp::closeFunction(Type *type)

@@ -152,7 +152,6 @@ void SymbolTable::declareFunction(Var_Type type, Id* id, Formals *formals)
     }
 
     this->currentFunction = id->value;
-    // << "declaring function : " << this->currentFunction << " in symbolTable" << endl;
 }
 
 bool SymbolTable::isExist(string id)
