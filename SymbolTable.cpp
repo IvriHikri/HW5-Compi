@@ -94,27 +94,27 @@ void closeGlobalScope()
     closeScope();
 }
 
-void addSymbol(Node *symbol, string &value)
+void addSymbol(Node *symbol, string& var_name)
 {
     if (isExist(symbol->value))
     {
         errorDef(yylineno, symbol->value);
     }
 
-    symbolTables.back()->getEntries().emplace_back(new TableEntry(symbol->value, symbol->type, offset.top()));
+    symbolTables.back()->getEntries().emplace_back(new TableEntry(symbol->value, symbol->type, offset.top(), var_name));
     offset.top()++;
 }
 
-void declareFunction(Type *type, Id *id, Formals *formals)
+void declareFunction(Var_Type type, string id, Formals *formals)
 {
     if (symbolTables.empty())
     {
         openScope();
     }
 
-    if (isExist(id->value)) // check if Function identifier already exist
+    if (isExist(id)) // check if Function identifier already exist
     {
-        errorDef(yylineno, id->value);
+        errorDef(yylineno, id);
     }
 
     vector<Var_Type> var_types;
@@ -123,7 +123,7 @@ void declareFunction(Type *type, Id *id, Formals *formals)
         var_types.push_back(f->type);
     }
 
-    symbolTables.back()->getEntries().emplace_back(new TableEntry(id->value, var_types, type->type, 0));
+    symbolTables.back()->getEntries().emplace_back(new TableEntry(id, var_types, type, 0));
 
     openScope();
     int i = -1;
@@ -133,10 +133,10 @@ void declareFunction(Type *type, Id *id, Formals *formals)
         {
             errorDef(yylineno, f->value);
         }
-        symbolTables.back()->getEntries().emplace_back(new TableEntry(f->value, f->type, i));
+        symbolTables.back()->getEntries().emplace_back(new TableEntry(f->value, f->type, i, f->var_name));
         i--;
     }
-    currentFunction = id->value;
+    currentFunction = id;
 }
 
 bool isExist(string id)

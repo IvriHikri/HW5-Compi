@@ -12,16 +12,18 @@ class TableEntry
     Var_Type returnValue;
     int offset;
     bool isFunc;
+    string var_name;
 
 public:
     TableEntry();
-    explicit TableEntry(string name, Var_Type type, int offset) // for single symbol
+    explicit TableEntry(string name, Var_Type type, int offset, string var_name) // for single symbol
     {
         this->name = name;
         this->types = vector<Var_Type>(1, type);
         this->returnValue = UNDEFINED;
         this->offset = offset;
         this->isFunc = false;
+        this->var_name = var_name;
     }
 
     explicit TableEntry(string &name, vector<Var_Type> &types, Var_Type returnValue, int offset) // for function
@@ -31,6 +33,7 @@ public:
         this->returnValue = returnValue;
         this->offset = offset;
         this->isFunc = true;
+        this->var_name = "";
     }
 
     ~TableEntry() = default;
@@ -39,6 +42,7 @@ public:
     vector<Var_Type> &getTypes() { return this->types; }
     Var_Type getReturnValue() { return this->returnValue; }
     int getOffset() { return this->offset; }
+    string getVarName() { return var_name; }
     bool getIsFunc() { return this->isFunc; }
 };
 
@@ -60,8 +64,8 @@ public:
     }
 };
 
-void addSymbol(Node *symbol, string &value);
-void declareFunction(Type *type, Id *id, Formals *formals);
+void addSymbol(Node *symbol, string& var_name);
+void declareFunction(Var_Type type, string id, Formals *formals);
 bool isExist(string id);
 TableEntry *getTableEntry(string id);
 void openScope();

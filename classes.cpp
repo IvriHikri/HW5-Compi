@@ -48,9 +48,16 @@ Statement::Statement(Type *t, Id *symbol)
         errorDef(yylineno, symbol->value);
     }
     symbol->type = t->type;
-    symbol->var_name = comp.freshVar();
+    symbol->var_name = comp.freshVar()+"For_" + symbol->value;
     string emptyVal = "";
-    addSymbol(symbol, emptyVal);
+    addSymbol(symbol, symbol->var_name);
+
+    TableEntry *ent = getTableEntry(symbol->value);
+
+    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + " , i32 " + to_string(ent->getOffset());
+    comp.emit(to_emit);
+    string to_emit2 = "store i32 0, i32* " + symbol->var_name;
+    comp.emit(to_emit2);
 }
 
 // Type ID = EXP;
@@ -66,13 +73,23 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
     }
     symbol->type = t->type;
     symbol->var_name = comp.freshVar();
-    if(t->type != V_INT)
+    if(t->type == V_BOOL)
+    {
+        //TODO, need to add some things...
+    }
+    else if(t->type != V_INT)
     {
         symbol->var_name = comp.makeTruncZext(symbol->var_name, comp.operationSize(symbol->type), "i32", "zext");
     }
-    addSymbol(symbol, exp->value);
-    string to_emit = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
-    cb.emit(to_emit);
+    symbol->var_name = symbol->var_name + "For_" + symbol->value;
+    addSymbol(symbol, symbol->var_name);
+
+    TableEntry *ent = getTableEntry(symbol->value);
+
+    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + " , i32" + to_string(ent->getOffset());
+    comp.emit(to_emit);
+    string to_emit2 = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
+    comp.emit(to_emit2);
 }
 
 // ID = Exp;
@@ -88,7 +105,20 @@ Statement::Statement(Id *symbol, Exp *exp)
     {
         errorMismatch(yylineno);
     }
-    symbol->var_name = comp.freshVar();
+
+    if(exp->type == V_BOOL)
+    {
+        //TODOOOOOO
+    }
+
+    else if(exp->type != V_INT)
+    {
+        exp->var_name = comp.makeTruncZext(exp->var_name, comp.operationSize(exp->type), "i32", "zext");
+    }
+
+    string var_name_in_table = ent->getVarName();
+    string to_emit = "store i32 " + exp->var_name + ", i32* " + var_name_in_table;
+    comp.emit(to_emit);
 }
 
 // return Exp;
@@ -103,11 +133,11 @@ Statement::Statement(Node *symbol, Exp *exp)
         }
         string type = comp.operationSize(exp->type);
         string to_emit = "ret " + type + " " + exp->var_name;
-        cb.emit(to_emit);
+        comp.emit(to_emit);
     }
 }
 
-// Call
+// 
 Statement::Statement(Call *call)
 {
     this->value = call->value;
@@ -163,6 +193,7 @@ Call::Call(Id *symbol)
 
     this->value = symbol->value;
     this->type = ent->getReturnValue();
+    comp.callFunc(this, symbol->value, this->type, vector<Exp*>());
 }
 
 Call::Call(Id *symbol, Explist *exp_list)
@@ -185,7 +216,7 @@ Call::Call(Id *symbol, Explist *exp_list)
     {
         if (t != temp[index]->type && !(t == V_INT && temp[index]->type == V_BYTE))
         {
-            vector temp = convertToStringVector(ent->getTypes());
+            vector<string> temp = convertToStringVector(ent->getTypes());
             errorPrototypeMismatch(yylineno, symbol->value, temp);
         }
         index++;
@@ -193,6 +224,7 @@ Call::Call(Id *symbol, Explist *exp_list)
 
     this->value = symbol->value;
     this->type = ent->getReturnValue();
+    comp.callFunc(this, symbol->value, this->type, exp_list->getExpressions());
 }
 
 /****************************************   EXP_LIST   ****************************************/
@@ -210,7 +242,7 @@ Explist::Explist(Exp *exp, Explist *exp_list)
 /****************************************   EXP   ****************************************/
 
 // (Exp)
-Exp::Exp(Exp *exp)
+/*Exp::Exp(Exp *exp)
 {
     this->value = exp->value;
     this->type = exp->type;
@@ -218,12 +250,12 @@ Exp::Exp(Exp *exp)
     this->falselist = exp->falselist;
     this->truelist = exp->truelist;
     this->nextlist = exp->nextlist;
-}
+}*/
 
 // Exp IF EXP else EXP
 Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
 {
-    if (e2->type != V_BOOL || (e1->type != e3->type && !((e1->type == V_BYTE && e3->type == V_INT) || (e1->type == V_INT && e3->type == V_BYTE))))
+    if (e2->type != V_BOOL || (e1->type != e3->type && !isValidTypesOperation(e1->type,e3->type)))
     {
         errorMismatch(yylineno);
     }
@@ -231,7 +263,7 @@ Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
     {
         this->type = e1->type;
     }
-    else if ((e1->type == V_BYTE && e3->type == V_INT) || (e1->type == V_INT && e3->type == V_BYTE))
+    else if (isValidTypesOperation(e1->type, e3->type))
     {
         this->type = V_INT;
         if(e1->type == V_BYTE)
@@ -279,7 +311,7 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
     this->var_name = comp.freshVar();
     string op = comp.whichOP(n->value, this->type);
     string to_emit = this->var_name + "= " + op + " " + comp.operationSize(this->type) + " " + var_name1 + ", " + var_name2;
-    cb.emit(to_emit);
+    comp.emit(to_emit);
 
     /*NEED TO CHECK DIV BY ZERO*/
 }
@@ -361,11 +393,11 @@ Exp::Exp(Type *t, Exp *e)
 }
 
 // Call
-Exp::Exp(Call *c)
+/*Exp::Exp(Call *c)
 {
     this->type = c->type;
     this->value = c->value;
-}
+}*/
 
 // ID
 Exp::Exp(Id *id)
@@ -391,13 +423,14 @@ Exp::Exp(Node *n)
         this->var_name = comp.freshVar();
         string val = (n->value.compare("true") == 0) ? "1" : "0";
         string to_emit = this->var_name + "= i1 " + val;
+        comp.emit(to_emit);
     }
     else if (n->type == V_INT)
     {
         this->value = n->value;
         this->type = V_INT;
         this->var_name = comp.freshVar();
-        cb.emit(this->var_name + "= i32 " + n->value);
+        comp.emit(this->var_name + "= i32 " + n->value);
     }
     else if (n->type == V_STRING)
     {
@@ -406,11 +439,11 @@ Exp::Exp(Node *n)
         string global_name = comp.globalFreshVar();
         string str = n->value.erase(n->value.size() - 1); // delete end "
         string to_emit = global_name + "= internal constant [" + to_string(str.size() + 1) + " x i8] c" + n->value + "\00\"";
-        cb.emitGlobal(to_emit);
+        comp.emitGlobal(to_emit);
 
         this->var_name = comp.freshVar();
         to_emit = this->var_name + " getelementptr [" + to_string(str.size() + 1) + " x i8], [" + to_string(str.size() + 1) + " x i8]* " + global_name + ", i32 0, i32 0";
-        cb.emit(to_emit);
+        comp.emit(to_emit);
     }
 }
 
@@ -427,7 +460,7 @@ Exp::Exp(Node *n1, Node *n2)
     this->value = n1->value;
     this->var_name = comp.freshVar();
     string code = this->var_name + "= i8 " + n1->value;
-    cb.emit(code);
+    comp.emit(code);
 }
 
 /****************************************   FORMAL_DECLERATION   ****************************************/

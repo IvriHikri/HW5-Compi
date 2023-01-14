@@ -1,4 +1,21 @@
 #include "llvm_comp.hpp"
+#include "hw3_output.hpp"
+#include "bp.hpp"
+#include "symbolTable.hpp"
+
+LLVM_Comp::LLVM_Comp() : cb(CodeBuffer::instance()), curr_reg(0), global_reg(0), stack_for_function("")
+{
+}
+
+void LLVM_Comp::emit(string to_emit)
+{
+    cb.emit(to_emit);
+}
+
+void LLVM_Comp::emitGlobal(string to_emit)
+{
+    cb.emitGlobal(to_emit);
+}
 
 string LLVM_Comp::whichOP(string op, Var_Type type)
 {
@@ -150,7 +167,71 @@ string LLVM_Comp::makeTruncZext(std::string var_name, std::string cur_size, std:
     return new_var;
 }
 
-void LLVM_Comp::ExpIfExpElseExp(Exp* exp, Exp* e1, Exp* e2, Exp* e3)
+void LLVM_Comp::declareFunc(Type *type, Id *id, Formals *formals)
+{
+    declareFunction(type->type, id->value, formals);
+    string code = "define " + operationSize(type->type) + " @" + id->value + "(";
+    if (!formals->declaration.empty())
+    {
+        for (FormalDecl *f : formals->declaration)
+        {
+            code += operationSize(f->type) + ", ";
+        }
+
+        code.erase(code.size() - 2);
+    }
+    code += ") {";
+    cb.emit(code);
+
+    this->stack_for_function = freshVar() + "_" + currentFunction;
+    code = this->stack_for_function + " = alloca i32, i32 50";
+    cb.emit(code);
+}
+
+void LLVM_Comp::closeFunction(Type *type)
+{
+    string code = "ret " + operationSize(type->type);
+    if (type->type != V_VOID)
+    {
+        code += " 0";
+    }
+    cb.emit(code);
+    cb.emit("}");
+    cb.emit("");
+}
+
+void LLVM_Comp::callFunc(Call *call, string func_name, Var_Type retrunType, vector<Exp *> arg_list)
+{
+    TableEntry *ent = getTableEntry(func_name);
+    int index = 0;
+    std::string code = "call " + operationSize(call->type) + " @" + func_name + "(";
+    vector<Var_Type> temp = ent->getTypes();
+    if (call->type != V_VOID)
+    {
+        call->var_name = freshVar();
+        code += call->var_name + " = ";
+    }
+
+    if (!arg_list.empty())
+    {
+        for (Exp *e : arg_list)
+        {
+            if (temp[index] == V_INT && e->type == V_BYTE)
+            {
+                e->var_name = makeTruncZext(e->var_name, "i8", "i32", "zext");
+                e->type = V_INT;
+            }
+
+            code += operationSize(e->type) + " " + e->var_name + ", ";
+            index++;
+        }
+        code.erase(code.size() - 2);
+    }
+    code += ")";
+    cb.emit(code);
+}
+
+void LLVM_Comp::ExpIfExpElseExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
 {
     exp->var_name = freshVar();
     string type = operationSize(exp->type);
@@ -159,11 +240,17 @@ void LLVM_Comp::ExpIfExpElseExp(Exp* exp, Exp* e1, Exp* e2, Exp* e3)
     cb.bpatch(e2->truelist, e2->label);
     string to_emit = exp->var_name + " = " + type + " " + e1->var_name;
     cb.emit(to_emit);
-    int location = cb.emit ("br label @");
+    int location = cb.emit("br label @");
     string false_label = cb.genLabel();
     cb.bpatch(e2->falselist, false_label);
     to_emit = exp->var_name + " = " + type + " " + e3->var_name;
     cb.emit(to_emit);
     string next_label = cb.genLabel();
-    cb.bpatch(cb.makelist({location, FIRST}),next_label);
+    cb.bpatch(cb.makelist({location, FIRST}), next_label);
+}
+
+void LLVM_Comp::printCodeBuffer()
+{
+    cb.printGlobalBuffer();
+    cb.printCodeBuffer();
 }
