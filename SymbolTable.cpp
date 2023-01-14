@@ -1,5 +1,4 @@
 #include "symbolTable.hpp"
-#include <string.h>
 string convertToString(Var_Type t)
 {
     string s;

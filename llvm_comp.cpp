@@ -3,7 +3,7 @@
 #include "bp.hpp"
 #include "symbolTable.hpp"
 
-LLVM_Comp::LLVM_Comp() : cb(CodeBuffer::instance()), sym(SymbolTable::instance()), curr_reg(0), global_reg(0), stack_for_function("")
+LLVM_Comp::LLVM_Comp() : cb(CodeBuffer::instance()), sym(SymbolTable::instance())
 {
 }
 
@@ -183,8 +183,8 @@ void LLVM_Comp::declareFunc(Type *type, Id *id, Formals *formals)
     code += ") {";
     cb.emit(code);
 
-    this->stack_for_function = this->freshVar() + "_" + sym.currentFunction;
-    code = this->stack_for_function + " = alloca i32, i32 50";
+    stack_for_function = this->freshVar() + "_" + sym.currentFunction;
+    code = stack_for_function + " = alloca i32, i32 50";
     cb.emit(code);
 }
 
@@ -198,6 +198,7 @@ void LLVM_Comp::closeFunction(Type *type)
     cb.emit(code);
     cb.emit("}");
     cb.emit("");
+    stack_for_function = "";
 }
 
 void LLVM_Comp::callFunc(Call *call, string func_name, Var_Type retrunType, vector<Exp *> arg_list)

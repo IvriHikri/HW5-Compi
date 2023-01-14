@@ -5,18 +5,17 @@
 #include <list>
 #include <stack>
 #include <iostream>
-#include "classes.h"
 #include "symbolTable.hpp"
 
+static int curr_reg = 0;
+static int global_reg = 0;
+static string stack_for_function = "";
 class LLVM_Comp
 {
 public:
     CodeBuffer &cb;
     SymbolTable &sym;
-    int curr_reg;
-    int global_reg;
-    string stack_for_function;
-
+    
     LLVM_Comp();
     void CreateBranch(Exp *exp);
     void AddLabelAfterExpression(Exp *exp);
@@ -29,7 +28,7 @@ public:
     void ExpIfExpElseExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3);
     void printCodeBuffer();
     /* ====================  Helper Functions ==================== */
-    string freshVar() { return "%t" + to_string(this->curr_reg++); }
+    string freshVar() { return "%t" + to_string(curr_reg++); }
     string globalFreshVar() { return "@str" + to_string(global_reg++); }
     int get_curr_reg() { return curr_reg; }
     string get_stack_for_function() { return stack_for_function; }

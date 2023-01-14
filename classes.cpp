@@ -1,4 +1,3 @@
-#include "classes.h"
 #include "llvm_comp.hpp"
 /****************************************   TYPE   ****************************************/
 
@@ -85,7 +84,6 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
     comp.sym.addSymbol(symbol, symbol->var_name);
 
     TableEntry *ent = comp.sym.getTableEntry(symbol->value);
-
     string to_emit = symbol->var_name + " = getelementptr i32, i32*" + comp.get_stack_for_function() + ", i32 0, i32 " + to_string(ent->getOffset());
     comp.emit(to_emit);
     to_emit = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
@@ -124,7 +122,6 @@ Statement::Statement(Id *symbol, Exp *exp)
 // return Exp;
 Statement::Statement(Node *symbol, Exp *exp)
 {
-    // cout << "current function is: " << comp.sym.currentFunction << endl;
     if (symbol->value.compare("return") == 0)
     {
         TableEntry *ent = comp.sym.getTableEntry(comp.sym.currentFunction);
@@ -426,7 +423,6 @@ Exp::Exp(Id *id)
             this->var_name = comp.makeTruncZext(this->var_name, "i32", comp.operationSize(this->type), "trunc");
         }
     }
-    cout << this->value << " is in offset " << ent->getOffset() << endl;
 }
 
 // TRUE/FALSE/NUM/STRING
