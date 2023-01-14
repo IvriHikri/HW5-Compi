@@ -43,18 +43,18 @@ Type::Type(Var_Type v_type)
 // Type ID;
 Statement::Statement(Type *t, Id *symbol)
 {
-    if (isExist(symbol->value))
+    if (comp.sym.isExist(symbol->value))
     {
         errorDef(yylineno, symbol->value);
     }
     symbol->type = t->type;
-    symbol->var_name = comp.freshVar()+"For_" + symbol->value;
+    symbol->var_name = comp.freshVar() + "For_" + symbol->value;
     string emptyVal = "";
-    addSymbol(symbol, symbol->var_name);
+    comp.sym.addSymbol(symbol, symbol->var_name);
 
-    TableEntry *ent = getTableEntry(symbol->value);
+    TableEntry *ent = comp.sym.getTableEntry(symbol->value);
 
-    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + " , i32 " + to_string(ent->getOffset());
+    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 0, i32" + to_string(ent->getOffset());
     comp.emit(to_emit);
     string to_emit2 = "store i32 0, i32* " + symbol->var_name;
     comp.emit(to_emit2);
@@ -63,7 +63,7 @@ Statement::Statement(Type *t, Id *symbol)
 // Type ID = EXP;
 Statement::Statement(Type *t, Id *symbol, Exp *exp)
 {
-    if (isExist(symbol->value))
+    if (comp.sym.isExist(symbol->value))
     {
         errorDef(yylineno, symbol->value);
     }
@@ -73,29 +73,29 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
     }
     symbol->type = t->type;
     symbol->var_name = comp.freshVar();
-    if(t->type == V_BOOL)
+    if (t->type == V_BOOL)
     {
-        //TODO, need to add some things...
+        // TODO, need to add some things...
     }
-    else if(t->type != V_INT)
+    else if (t->type != V_INT)
     {
         symbol->var_name = comp.makeTruncZext(symbol->var_name, comp.operationSize(symbol->type), "i32", "zext");
     }
-    symbol->var_name = symbol->var_name + "For_" + symbol->value;
-    addSymbol(symbol, symbol->var_name);
+    symbol->var_name = symbol->var_name + "_For_" + symbol->value;
+    comp.sym.addSymbol(symbol, symbol->var_name);
 
-    TableEntry *ent = getTableEntry(symbol->value);
+    TableEntry *ent = comp.sym.getTableEntry(symbol->value);
 
-    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + " , i32" + to_string(ent->getOffset());
+    string to_emit = symbol->var_name + " = getelementptr i32, i32*" + comp.get_stack_for_function() + ", i32 0, i32 " + to_string(ent->getOffset());
     comp.emit(to_emit);
-    string to_emit2 = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
-    comp.emit(to_emit2);
+    to_emit = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
+    comp.emit(to_emit);
 }
 
 // ID = Exp;
 Statement::Statement(Id *symbol, Exp *exp)
 {
-    TableEntry *ent = getTableEntry(symbol->value);
+    TableEntry *ent = comp.sym.getTableEntry(symbol->value);
     if (ent == nullptr || ent->getIsFunc())
     {
         errorUndef(yylineno, symbol->value);
@@ -106,12 +106,12 @@ Statement::Statement(Id *symbol, Exp *exp)
         errorMismatch(yylineno);
     }
 
-    if(exp->type == V_BOOL)
+    if (exp->type == V_BOOL)
     {
-        //TODOOOOOO
+        // TODOOOOOO
     }
 
-    else if(exp->type != V_INT)
+    else if (exp->type != V_INT)
     {
         exp->var_name = comp.makeTruncZext(exp->var_name, comp.operationSize(exp->type), "i32", "zext");
     }
@@ -124,10 +124,11 @@ Statement::Statement(Id *symbol, Exp *exp)
 // return Exp;
 Statement::Statement(Node *symbol, Exp *exp)
 {
+    // cout << "current function is: " << comp.sym.currentFunction << endl;
     if (symbol->value.compare("return") == 0)
     {
-        TableEntry *ent = getTableEntry(currentFunction);
-        if (ent->getReturnValue() == V_VOID || !checkReturnType(exp->type))
+        TableEntry *ent = comp.sym.getTableEntry(comp.sym.currentFunction);
+        if (ent->getReturnValue() == V_VOID || !comp.sym.checkReturnType(exp->type))
         {
             errorMismatch(yylineno);
         }
@@ -137,7 +138,7 @@ Statement::Statement(Node *symbol, Exp *exp)
     }
 }
 
-// 
+//
 Statement::Statement(Call *call)
 {
     this->value = call->value;
@@ -149,22 +150,23 @@ Statement::Statement(Node *symbol)
 {
     if (symbol->value.compare("return") == 0)
     {
-        if (!checkReturnType(V_VOID))
+        if (!comp.sym.checkReturnType(V_VOID))
         {
             errorMismatch(yylineno);
         }
         string to_emit = "ret void";
+        comp.emit(to_emit);
     }
     else if (symbol->value.compare("break") == 0)
     {
-        if (in_while <= 0)
+        if (comp.sym.in_while <= 0)
         {
             errorUnexpectedBreak(yylineno);
         }
     }
     else if (symbol->value.compare("continue") == 0)
     {
-        if (in_while <= 0)
+        if (comp.sym.in_while <= 0)
         {
             errorUnexpectedContinue(yylineno);
         }
@@ -178,7 +180,7 @@ Statement::Statement(Node *symbol)
 
 Call::Call(Id *symbol)
 {
-    TableEntry *ent = getTableEntry(symbol->value);
+    TableEntry *ent = comp.sym.getTableEntry(symbol->value);
 
     if (ent == nullptr || !ent->getIsFunc())
     {
@@ -193,12 +195,12 @@ Call::Call(Id *symbol)
 
     this->value = symbol->value;
     this->type = ent->getReturnValue();
-    comp.callFunc(this, symbol->value, this->type, vector<Exp*>());
+    comp.callFunc(this, symbol->value, this->type, vector<Exp *>());
 }
 
 Call::Call(Id *symbol, Explist *exp_list)
 {
-    TableEntry *ent = getTableEntry(symbol->value);
+    TableEntry *ent = comp.sym.getTableEntry(symbol->value);
     if (ent == nullptr || !ent->getIsFunc())
     {
         errorUndefFunc(yylineno, symbol->value);
@@ -255,7 +257,7 @@ Explist::Explist(Exp *exp, Explist *exp_list)
 // Exp IF EXP else EXP
 Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
 {
-    if (e2->type != V_BOOL || (e1->type != e3->type && !isValidTypesOperation(e1->type,e3->type)))
+    if (e2->type != V_BOOL || (e1->type != e3->type && !comp.sym.isValidTypesOperation(e1->type, e3->type)))
     {
         errorMismatch(yylineno);
     }
@@ -263,25 +265,25 @@ Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
     {
         this->type = e1->type;
     }
-    else if (isValidTypesOperation(e1->type, e3->type))
+    else if (comp.sym.isValidTypesOperation(e1->type, e3->type))
     {
         this->type = V_INT;
-        if(e1->type == V_BYTE)
+        if (e1->type == V_BYTE)
         {
             e1->var_name = comp.makeTruncZext(e1->var_name, "i8", "i32", "zext");
         }
-        if(e3->type == V_BYTE)
+        if (e3->type == V_BYTE)
         {
             e3->var_name = comp.makeTruncZext(e3->var_name, "i8", "i32", "zext");
         }
     }
-    comp.ExpIfExpElseExp(this,e1,e2,e3);
+    comp.ExpIfExpElseExp(this, e1, e2, e3);
 }
 
 // EXP BINOP EXP
 Exp::Exp(Exp *e1, Node *n, Exp *e2)
 {
-    if (!isValidTypesOperation(e1->type, e2->type))
+    if (!comp.sym.isValidTypesOperation(e1->type, e2->type))
     {
         errorMismatch(yylineno);
     }
@@ -298,14 +300,14 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
     {
         if (e1->type == V_BYTE)
         {
-            var_name1 = comp.makeTruncZext(var_name1, "i8", "i32","zext");
+            var_name1 = comp.makeTruncZext(var_name1, "i8", "i32", "zext");
         }
         if (e2->type == V_BYTE)
         {
-            var_name2 = comp.makeTruncZext(var_name2, "i8", "i32","zext");
+            var_name2 = comp.makeTruncZext(var_name2, "i8", "i32", "zext");
         }
     }
-    
+
     this->value = e1->value + " " + n->value + " " + e2->value;
 
     this->var_name = comp.freshVar();
@@ -327,16 +329,16 @@ Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
             errorMismatch(yylineno);
         }
 
-        if(n1->value.compare("and") == 0)
+        if (n1->value.compare("and") == 0)
         {
-            comp.AndExp(this,e1, e2);
+            comp.AndExp(this, e1, e2);
         }
         else
         {
-            comp.OrExp(this,e1, e2);
+            comp.OrExp(this, e1, e2);
         }
     }
-    else if (isValidTypesOperation(e1->type, e2->type))
+    else if (comp.sym.isValidTypesOperation(e1->type, e2->type))
     { // RELOP
         comp.RelopExp(this, e1, e2, n1->value);
     }
@@ -353,7 +355,7 @@ Exp::Exp(Node *n, Exp *e)
         errorMismatch(yylineno);
 
     this->type = V_BOOL;
-    if(comp.isBoolLiteral(n->value))
+    if (comp.isBoolLiteral(n->value))
     {
         this->value = n->value == "true" ? "false" : "true";
     }
@@ -367,7 +369,7 @@ Exp::Exp(Type *t, Exp *e)
 {
     if (t->type != e->type)
     {
-        if (!isValidTypesOperation(t->type, e->type))
+        if (!comp.sym.isValidTypesOperation(t->type, e->type))
             errorMismatch(yylineno);
     }
 
@@ -378,7 +380,7 @@ Exp::Exp(Type *t, Exp *e)
     this->nextlist = e->nextlist;
 
     string v_name = e->var_name;
-    if(t->type == V_INT && e->type == V_BYTE)
+    if (t->type == V_INT && e->type == V_BYTE)
     {
         this->var_name = comp.makeTruncZext(e->var_name, comp.operationSize(e->type), comp.operationSize(t->type), "trunc");
     }
@@ -402,14 +404,14 @@ Exp::Exp(Type *t, Exp *e)
 // ID
 Exp::Exp(Id *id)
 {
-    TableEntry *ent = getTableEntry(id->value);
+    TableEntry *ent = comp.sym.getTableEntry(id->value);
     if (ent == nullptr || ent->getIsFunc())
     {
         errorUndef(yylineno, id->value);
     }
     this->value = ent->getName();
     this->type = ent->getTypes()[0];
-    this->var_name = id->var_name;
+    this->var_name = ent->getVarName();
 }
 
 // TRUE/FALSE/NUM/STRING
@@ -430,7 +432,7 @@ Exp::Exp(Node *n)
         this->value = n->value;
         this->type = V_INT;
         this->var_name = comp.freshVar();
-        comp.emit(this->var_name + "= i32 " + n->value);
+        comp.emit(this->var_name + " = add i32 0, " + n->value);
     }
     else if (n->type == V_STRING)
     {
@@ -459,7 +461,7 @@ Exp::Exp(Node *n1, Node *n2)
 
     this->value = n1->value;
     this->var_name = comp.freshVar();
-    string code = this->var_name + "= i8 " + n1->value;
+    string code = this->var_name + "= add i8 0, " + n1->value;
     comp.emit(code);
 }
 

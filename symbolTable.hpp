@@ -64,28 +64,33 @@ public:
     }
 };
 
-void addSymbol(Node *symbol, string& var_name);
-void declareFunction(Var_Type type, string id, Formals *formals);
-bool isExist(string id);
-TableEntry *getTableEntry(string id);
-void openScope();
-void closeScope();
-void closeGlobalScope();
-void findMain();
-bool checkReturnType(Var_Type type);
+class SymbolTable{
+    public:
+    list<Table *> symbolTables;
+    stack<int> offset;
+    int in_while;
+    string currentFunction;
+
+    SymbolTable();
+    static SymbolTable &instance();
+    void addSymbol(Id *symbol, string var_name);
+    void declareFunction(Var_Type type, Id* id, Formals *formals);
+    bool isExist(string id);
+    TableEntry *getTableEntry(string id);
+    void openScope();
+    void closeScope();
+    void closeGlobalScope();
+    void findMain();
+    bool checkReturnType(Var_Type type);
+    void start_while();
+    void finish_while();
+    void checkExpBool(Exp *exp);
+    void setCurrFunction(string newFunc = "");
+    bool isValidTypesOperation(Var_Type type1, Var_Type type2);
+};
+
+
 string convertToString(Var_Type t);
 vector<string> convertToStringVector(vector<Var_Type> vec);
-void start_while();
-void finish_while();
-void checkExpBool(Exp *exp);
-void setCurrFunction(string newFunc = "");
-bool isValidTypesOperation(Var_Type type1, Var_Type type2);
-
-/// Semantic Utilities ///
-
-static list<Table *> symbolTables = list<Table *>();
-static stack<int> offset = stack<int>();
-static int in_while = 0;
-static string currentFunction = "";
 
 #endif /*SYMBOL_TABLE*/

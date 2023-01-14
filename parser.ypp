@@ -26,12 +26,12 @@
 
 %%
 
-Program :  Funcs {if(yychar==YYEOF) {closeGlobalScope();} else {errorSyn(yylineno);}}
+Program :  Funcs {if(yychar==YYEOF) {comp.sym.closeGlobalScope();} else {errorSyn(yylineno);}}
 
 Funcs   :/* Epsilon */ 
         |FuncDecl Funcs
 
-FuncDecl:RetType ID LPAREN Formals RPAREN {comp.declareFunc((Type*)$1, (Id*)$2, (Formals*)$4);} LBRACE Statements RBRACE {comp.closeFunction((Type*)$1); setCurrFunction(); closeScope();} //
+FuncDecl:RetType ID LPAREN Formals RPAREN {comp.declareFunc((Type*)$1, (Id*)$2, (Formals*)$4);} LBRACE Statements RBRACE {comp.closeFunction((Type*)$1); comp.sym.setCurrFunction(); comp.sym.closeScope();} //
 
 RetType :Type {$$ = new Type((Type*)$1);}
         |VOID {$$ = new Type(V_VOID);}
@@ -60,10 +60,10 @@ Statement   :LBRACE OPEN_SCOPE Statements CLOSE_SCOPE RBRACE
         |BREAK SC {$$ = new Statement($1);}
         |CONTINUE SC {$$ = new Statement($1);}
 
-IS_EXP_BOOL : Exp {checkExpBool((Exp*)$1);}
+IS_EXP_BOOL : Exp {comp.sym.checkExpBool((Exp*)$1);}
 
-WHILE_M_START : /*epsilon*/ {start_while(); openScope();}
-WHILE_M_FINISH: /*epsilon*/ {finish_while(); closeScope();}
+WHILE_M_START : /*epsilon*/ {comp.sym.start_while(); comp.sym.openScope();}
+WHILE_M_FINISH: /*epsilon*/ {comp.sym.finish_while(); comp.sym.closeScope();}
 
 Call    :ID LPAREN ExpList RPAREN {$$ = new Call((Id*)$1,(Explist*)$3);}//
         |ID LPAREN RPAREN {$$ = new Call((Id*)$1);}//
@@ -94,13 +94,13 @@ Exp :LPAREN Exp RPAREN {$$ = $2;}//
     |LPAREN Type RPAREN Exp {$$ = new Exp ((Type*)$2,(Exp*)$4);} //
 
 
-OPEN_SCOPE : /*epsilon */ {openScope();}
-CLOSE_SCOPE: /*epsilon */ {closeScope();}
+OPEN_SCOPE : /*epsilon */ {comp.sym.openScope();}
+CLOSE_SCOPE: /*epsilon */ {comp.sym.closeScope();}
 %%
 
 int main()
 {
-        openScope();
+        comp.sym.openScope();
         int result = yyparse();
         comp.printCodeBuffer();
         return result;

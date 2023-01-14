@@ -1,5 +1,5 @@
 #include "symbolTable.hpp"
-
+#include <string.h>
 string convertToString(Var_Type t)
 {
     string s;
@@ -36,7 +36,21 @@ vector<string> convertToStringVector(vector<Var_Type> vec)
     return new_vec;
 }
 
-void openScope()
+SymbolTable::SymbolTable()
+{
+    symbolTables = list<Table *>();
+    offset = stack<int>();
+    in_while = 0;
+    currentFunction = "";
+}
+
+SymbolTable & SymbolTable::instance()
+{
+    static SymbolTable inst; // only instance
+    return inst;
+}
+
+void SymbolTable::openScope()
 {
     if (symbolTables.empty())
     {
@@ -56,7 +70,7 @@ void openScope()
     }
 }
 
-void findMain()
+void SymbolTable::findMain()
 {
     TableEntry *ent = getTableEntry(string("main"));
     if (ent == nullptr || ent->getTypes().size() != 0 || ent->getReturnValue() != V_VOID)
@@ -65,7 +79,7 @@ void findMain()
     }
 }
 
-void closeScope()
+void SymbolTable::closeScope()
 {
     endScope();
     Table *t = symbolTables.back();
@@ -88,13 +102,13 @@ void closeScope()
     offset.pop();
 }
 
-void closeGlobalScope()
+void SymbolTable::closeGlobalScope()
 {
     findMain();
     closeScope();
 }
 
-void addSymbol(Node *symbol, string& var_name)
+void SymbolTable::addSymbol(Id *symbol, string var_name)
 {
     if (isExist(symbol->value))
     {
@@ -105,16 +119,16 @@ void addSymbol(Node *symbol, string& var_name)
     offset.top()++;
 }
 
-void declareFunction(Var_Type type, string id, Formals *formals)
+void SymbolTable::declareFunction(Var_Type type, Id* id, Formals *formals)
 {
     if (symbolTables.empty())
     {
         openScope();
     }
 
-    if (isExist(id)) // check if Function identifier already exist
+    if (isExist(id->value)) // check if Function identifier already exist
     {
-        errorDef(yylineno, id);
+        errorDef(yylineno, id->value);
     }
 
     vector<Var_Type> var_types;
@@ -123,7 +137,7 @@ void declareFunction(Var_Type type, string id, Formals *formals)
         var_types.push_back(f->type);
     }
 
-    symbolTables.back()->getEntries().emplace_back(new TableEntry(id, var_types, type, 0));
+    symbolTables.back()->getEntries().emplace_back(new TableEntry(id->value, var_types, type, 0));
 
     openScope();
     int i = -1;
@@ -136,10 +150,12 @@ void declareFunction(Var_Type type, string id, Formals *formals)
         symbolTables.back()->getEntries().emplace_back(new TableEntry(f->value, f->type, i, f->var_name));
         i--;
     }
-    currentFunction = id;
+
+    this->currentFunction = id->value;
+    // << "declaring function : " << this->currentFunction << " in symbolTable" << endl;
 }
 
-bool isExist(string id)
+bool SymbolTable::isExist(string id)
 {
     for (Table *t : symbolTables)
     {
@@ -154,7 +170,7 @@ bool isExist(string id)
     return false;
 }
 
-TableEntry *getTableEntry(string id)
+TableEntry *SymbolTable::getTableEntry(string id)
 {
     for (Table *t : symbolTables)
     {
@@ -169,7 +185,7 @@ TableEntry *getTableEntry(string id)
     return nullptr;
 }
 
-bool checkReturnType(Var_Type type)
+bool SymbolTable::checkReturnType(Var_Type type)
 {
     TableEntry *ent = getTableEntry(currentFunction);
     if (ent == nullptr || !ent->getIsFunc())
@@ -182,7 +198,7 @@ bool checkReturnType(Var_Type type)
     return ((ent->getReturnValue() == type) || (ent->getReturnValue() == V_INT && type == V_BYTE));
 }
 
-void checkExpBool(Exp *exp)
+void SymbolTable::checkExpBool(Exp *exp)
 {
     if (exp->type != V_BOOL)
     {
@@ -190,21 +206,21 @@ void checkExpBool(Exp *exp)
     }
 }
 
-void setCurrFunction(string newFunc)
+void SymbolTable::setCurrFunction(string newFunc)
 {
     currentFunction = newFunc;
 }
 
-void start_while()
+void SymbolTable::start_while()
 {
     in_while++;
 }
-void finish_while()
+void SymbolTable::finish_while()
 {
     in_while--;
 }
 
-bool isValidTypesOperation(Var_Type type1, Var_Type type2)
+bool SymbolTable::isValidTypesOperation(Var_Type type1, Var_Type type2)
 {
     if (!(type1 == V_INT || type1 == V_BYTE) && !(type2 == V_INT || type2 == V_BYTE))
     {

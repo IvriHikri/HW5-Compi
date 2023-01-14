@@ -3,7 +3,7 @@
 #include "bp.hpp"
 #include "symbolTable.hpp"
 
-LLVM_Comp::LLVM_Comp() : cb(CodeBuffer::instance()), curr_reg(0), global_reg(0), stack_for_function("")
+LLVM_Comp::LLVM_Comp() : cb(CodeBuffer::instance()), sym(SymbolTable::instance()), curr_reg(0), global_reg(0), stack_for_function("")
 {
 }
 
@@ -169,7 +169,8 @@ string LLVM_Comp::makeTruncZext(std::string var_name, std::string cur_size, std:
 
 void LLVM_Comp::declareFunc(Type *type, Id *id, Formals *formals)
 {
-    declareFunction(type->type, id->value, formals);
+    // cout << "before declaring " << id->value << endl;
+    sym.declareFunction(type->type, id, formals);
     string code = "define " + operationSize(type->type) + " @" + id->value + "(";
     if (!formals->declaration.empty())
     {
@@ -183,9 +184,11 @@ void LLVM_Comp::declareFunc(Type *type, Id *id, Formals *formals)
     code += ") {";
     cb.emit(code);
 
-    this->stack_for_function = freshVar() + "_" + currentFunction;
+    this->stack_for_function = this->freshVar() + "_" + sym.currentFunction;
+    cout << "curr reg is " << curr_reg << " after " << sym.currentFunction << endl;
     code = this->stack_for_function + " = alloca i32, i32 50";
     cb.emit(code);
+    // cout << "emited decleration of " << id->value << endl;
 }
 
 void LLVM_Comp::closeFunction(Type *type)
@@ -202,7 +205,7 @@ void LLVM_Comp::closeFunction(Type *type)
 
 void LLVM_Comp::callFunc(Call *call, string func_name, Var_Type retrunType, vector<Exp *> arg_list)
 {
-    TableEntry *ent = getTableEntry(func_name);
+    TableEntry *ent = sym.getTableEntry(func_name);
     int index = 0;
     std::string code = "call " + operationSize(call->type) + " @" + func_name + "(";
     vector<Var_Type> temp = ent->getTypes();
