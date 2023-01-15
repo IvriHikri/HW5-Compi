@@ -39,11 +39,11 @@ SymbolTable::SymbolTable()
 {
     symbolTables = list<Table *>();
     offset = stack<int>();
-    in_while = 0;
+    while_labels = stack<string>();
     currentFunction = "";
 }
 
-SymbolTable & SymbolTable::instance()
+SymbolTable &SymbolTable::instance()
 {
     static SymbolTable inst; // only instance
     return inst;
@@ -118,7 +118,7 @@ void SymbolTable::addSymbol(Id *symbol, string var_name)
     offset.top()++;
 }
 
-void SymbolTable::declareFunction(Var_Type type, Id* id, Formals *formals)
+void SymbolTable::declareFunction(Var_Type type, Id *id, Formals *formals)
 {
     if (symbolTables.empty())
     {
@@ -207,15 +207,6 @@ void SymbolTable::checkExpBool(Exp *exp)
 void SymbolTable::setCurrFunction(string newFunc)
 {
     currentFunction = newFunc;
-}
-
-void SymbolTable::start_while()
-{
-    in_while++;
-}
-void SymbolTable::finish_while()
-{
-    in_while--;
 }
 
 bool SymbolTable::isValidTypesOperation(Var_Type type1, Var_Type type2)

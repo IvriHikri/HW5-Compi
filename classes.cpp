@@ -161,17 +161,22 @@ Statement::Statement(Node *symbol)
     }
     else if (symbol->value.compare("break") == 0)
     {
-        if (comp.sym.in_while <= 0)
+        if (comp.sym.while_labels.empty())
         {
             errorUnexpectedBreak(yylineno);
         }
+        string to_emit = "br label @";
+        int location = comp.emit(to_emit);
+        this->nextlist = comp.cb.makelist({location,FIRST});
     }
     else if (symbol->value.compare("continue") == 0)
     {
-        if (comp.sym.in_while <= 0)
+        if (comp.sym.while_labels.empty())
         {
             errorUnexpectedContinue(yylineno);
         }
+        string to_emit = "br label %" + comp.sym.while_labels.top();
+        comp.emit(to_emit);
     }
 
     this->type = UNDEFINED;

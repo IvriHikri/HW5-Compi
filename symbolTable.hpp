@@ -68,7 +68,7 @@ class SymbolTable{
     public:
     list<Table *> symbolTables;
     stack<int> offset;
-    int in_while;
+    stack<string> while_labels;
     string currentFunction;
 
     SymbolTable();
@@ -82,8 +82,6 @@ class SymbolTable{
     void closeGlobalScope();
     void findMain();
     bool checkReturnType(Var_Type type);
-    void start_while();
-    void finish_while();
     void checkExpBool(Exp *exp);
     void setCurrFunction(string newFunc = "");
     bool isValidTypesOperation(Var_Type type1, Var_Type type2);

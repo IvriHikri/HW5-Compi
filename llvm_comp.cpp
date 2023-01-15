@@ -3,9 +3,9 @@
 #include "bp.hpp"
 #include "symbolTable.hpp"
 
-void LLVM_Comp::emit(string to_emit)
+int LLVM_Comp::emit(string to_emit)
 {
-    cb.emit(to_emit);
+    return cb.emit(to_emit);
 }
 
 void LLVM_Comp::emitGlobal(string to_emit)
@@ -244,6 +244,17 @@ void LLVM_Comp::ExpIfExpElseExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
     cb.emit(to_emit);
     string next_label = cb.genLabel();
     cb.bpatch(cb.makelist({location, FIRST}), next_label);
+}
+
+void LLVM_Comp::start_while()
+{
+    string whileCondLabel = cb.genLabel();
+    sym.while_labels.push(whileCondLabel);
+}
+
+void LLVM_Comp::end_while()
+{
+    
 }
 
 void LLVM_Comp::printCodeBuffer()
