@@ -42,6 +42,7 @@ Type::Type(Var_Type v_type)
 // Type ID;
 Statement::Statement(Type *t, Id *symbol)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     if (comp.sym.isExist(symbol->value))
     {
         errorDef(yylineno, symbol->value);
@@ -62,6 +63,7 @@ Statement::Statement(Type *t, Id *symbol)
 // Type ID = EXP;
 Statement::Statement(Type *t, Id *symbol, Exp *exp)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     if (comp.sym.isExist(symbol->value))
     {
         errorDef(yylineno, symbol->value);
@@ -84,7 +86,7 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
     comp.sym.addSymbol(symbol, symbol->var_name);
 
     TableEntry *ent = comp.sym.getTableEntry(symbol->value);
-    string to_emit = symbol->var_name + " = getelementptr i32, i32*" + comp.get_stack_for_function() + ", i32 0, i32 " + to_string(ent->getOffset());
+    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 0, i32 " + to_string(ent->getOffset());
     comp.emit(to_emit);
     to_emit = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
     comp.emit(to_emit);
@@ -93,6 +95,7 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
 // ID = Exp;
 Statement::Statement(Id *symbol, Exp *exp)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     TableEntry *ent = comp.sym.getTableEntry(symbol->value);
     if (ent == nullptr || ent->getIsFunc())
     {
@@ -122,6 +125,7 @@ Statement::Statement(Id *symbol, Exp *exp)
 // return Exp;
 Statement::Statement(Node *symbol, Exp *exp)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     if (symbol->value.compare("return") == 0)
     {
         TableEntry *ent = comp.sym.getTableEntry(comp.sym.currentFunction);
@@ -145,6 +149,7 @@ Statement::Statement(Call *call)
 // RETURN/ BREAK / CONTINUE
 Statement::Statement(Node *symbol)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     if (symbol->value.compare("return") == 0)
     {
         if (!comp.sym.checkReturnType(V_VOID))
@@ -177,6 +182,7 @@ Statement::Statement(Node *symbol)
 
 Call::Call(Id *symbol)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     TableEntry *ent = comp.sym.getTableEntry(symbol->value);
 
     if (ent == nullptr || !ent->getIsFunc())
@@ -197,6 +203,7 @@ Call::Call(Id *symbol)
 
 Call::Call(Id *symbol, Explist *exp_list)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     TableEntry *ent = comp.sym.getTableEntry(symbol->value);
     if (ent == nullptr || !ent->getIsFunc())
     {
@@ -254,6 +261,7 @@ Explist::Explist(Exp *exp, Explist *exp_list)
 // Exp IF EXP else EXP
 Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     if (e2->type != V_BOOL || (e1->type != e3->type && !comp.sym.isValidTypesOperation(e1->type, e3->type)))
     {
         errorMismatch(yylineno);
@@ -280,6 +288,7 @@ Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
 // EXP BINOP EXP
 Exp::Exp(Exp *e1, Node *n, Exp *e2)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     if (!comp.sym.isValidTypesOperation(e1->type, e2->type))
     {
         errorMismatch(yylineno);
@@ -318,6 +327,7 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
 // EXP AND/OR/RELOP EXP
 Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     this->type = V_BOOL;
     if (e1->type == V_BOOL && e2->type == V_BOOL)
     {
@@ -348,6 +358,7 @@ Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
 // NOT EXP
 Exp::Exp(Node *n, Exp *e)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     if (e->type != V_BOOL)
         errorMismatch(yylineno);
 
@@ -364,6 +375,7 @@ Exp::Exp(Node *n, Exp *e)
 // (TYPE) EXP
 Exp::Exp(Type *t, Exp *e)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     if (t->type != e->type)
     {
         if (!comp.sym.isValidTypesOperation(t->type, e->type))
@@ -401,6 +413,7 @@ Exp::Exp(Type *t, Exp *e)
 // ID
 Exp::Exp(Id *id)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     TableEntry *ent = comp.sym.getTableEntry(id->value);
     if (ent == nullptr || ent->getIsFunc())
     {
@@ -428,6 +441,7 @@ Exp::Exp(Id *id)
 // TRUE/FALSE/NUM/STRING
 Exp::Exp(Node *n)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     this->value = n->value;
     if (comp.isBoolLiteral(n->value))
     {
@@ -463,6 +477,7 @@ Exp::Exp(Node *n)
 // NUM B
 Exp::Exp(Node *n1, Node *n2)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     if (n1->type != V_INT || n2->value.compare("b") != 0)
         errorMismatch(yylineno);
 

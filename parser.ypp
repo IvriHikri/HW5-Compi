@@ -12,6 +12,7 @@
 	extern int yylex();
         extern int yylineno;
 	int yyerror(const char * message);
+        LLVM_Comp &comp = LLVM_Comp::getInstance();
 %}
 
 %nonassoc VOID INT BYTE B BOOL

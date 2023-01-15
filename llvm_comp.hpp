@@ -7,16 +7,25 @@
 #include <iostream>
 #include "symbolTable.hpp"
 
-static int curr_reg = 0;
-static int global_reg = 0;
-static string stack_for_function = "";
 class LLVM_Comp
 {
+    LLVM_Comp() : curr_reg(0), global_reg(0), stack_for_function(""), cb(CodeBuffer::instance()), sym(SymbolTable::instance()) {}
+
 public:
+    int curr_reg;
+    int global_reg;
+    string stack_for_function;
     CodeBuffer &cb;
     SymbolTable &sym;
-    
-    LLVM_Comp();
+    static LLVM_Comp &getInstance() // make SmallShell singleton
+    {
+        static LLVM_Comp instance; // Guaranteed to be destroyed.
+        // Instantiated on first use.
+        return instance;
+    }
+
+    LLVM_Comp(LLVM_Comp const &) = delete;      // disable copy ctor
+    void operator=(LLVM_Comp const &) = delete; // disable = operator
     void CreateBranch(Exp *exp);
     void AddLabelAfterExpression(Exp *exp);
     void AndExp(Exp *exp, Exp *e1, Exp *e2);
@@ -40,7 +49,5 @@ public:
     string operationSize(Var_Type type);
     bool isBoolLiteral(string symbol);
 };
-
-static LLVM_Comp comp;
 
 #endif

@@ -3,10 +3,6 @@
 #include "bp.hpp"
 #include "symbolTable.hpp"
 
-LLVM_Comp::LLVM_Comp() : cb(CodeBuffer::instance()), sym(SymbolTable::instance())
-{
-}
-
 void LLVM_Comp::emit(string to_emit)
 {
     cb.emit(to_emit);
@@ -147,11 +143,11 @@ void LLVM_Comp::RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel)
 
     if (e1->type != type)
     {
-        var_name1 = comp.makeTruncZext(var_name1, operationSize(e1->type), operationSize(type), "zext");
+        var_name1 = makeTruncZext(var_name1, operationSize(e1->type), operationSize(type), "zext");
     }
     if (e2->type != type)
     {
-        var_name2 = comp.makeTruncZext(var_name2, operationSize(e1->type), operationSize(type), "zext");
+        var_name2 = makeTruncZext(var_name2, operationSize(e1->type), operationSize(type), "zext");
     }
 
     exp->var_name = freshVar();
