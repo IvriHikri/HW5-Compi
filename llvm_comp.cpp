@@ -116,21 +116,30 @@ void LLVM_Comp::AddLabelAfterExpression(Exp *exp)
 void LLVM_Comp::AndExp(Exp *exp, Exp *e1, Exp *e2)
 {
     cb.bpatch(e1->truelist, e1->label);
-    CreateBranch(e2);
-    AddLabelAfterExpression(e2);
+    if (isBoolLiteral(e2->value))
+    {
+        CreateBranch(e2);
+        AddLabelAfterExpression(e2);
+    }
+
     exp->var_name = e2->var_name;
     exp->truelist = e2->truelist;
     exp->falselist = cb.merge(e1->falselist, e2->falselist);
+    exp->label = e2->label;
 }
 
 void LLVM_Comp::OrExp(Exp *exp, Exp *e1, Exp *e2)
 {
     cb.bpatch(e1->falselist, e1->label);
-    CreateBranch(e2);
-    AddLabelAfterExpression(e2);
+    if (isBoolLiteral(e2->value))
+    {
+        CreateBranch(e2);
+        AddLabelAfterExpression(e2);
+    }
     exp->var_name = e2->var_name;
     exp->falselist = e2->falselist;
     exp->truelist = cb.merge(e1->truelist, e2->truelist);
+    exp->label = e2->label;
 }
 
 void LLVM_Comp::RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel)
@@ -153,6 +162,8 @@ void LLVM_Comp::RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel)
     exp->var_name = freshVar();
     string to_emit = exp->var_name + "= icmp " + relop + " " + operationSize(type) + " " + var_name1 + ", " + var_name2;
     cb.emit(to_emit);
+    CreateBranch(exp);
+    AddLabelAfterExpression(exp);
 }
 
 string LLVM_Comp::makeTruncZext(std::string var_name, std::string cur_size, std::string new_size, string operation)
@@ -201,13 +212,14 @@ void LLVM_Comp::callFunc(Call *call, string func_name, Var_Type retrunType, vect
 {
     TableEntry *ent = sym.getTableEntry(func_name);
     int index = 0;
-    std::string code = "call " + operationSize(call->type) + " @" + func_name + "(";
-    vector<Var_Type> temp = ent->getTypes();
+    std::string code = "";
     if (call->type != V_VOID)
     {
         call->var_name = freshVar();
         code += call->var_name + " = ";
     }
+    code += "call " + operationSize(call->type) + " @" + func_name + "(";
+    vector<Var_Type> temp = ent->getTypes();
 
     if (!arg_list.empty())
     {
@@ -246,19 +258,66 @@ void LLVM_Comp::ExpIfExpElseExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
     cb.bpatch(cb.makelist({location, FIRST}), next_label);
 }
 
+void LLVM_Comp::startIF(Exp *exp)
+{
+    sym.checkExpBool(exp);
+    if (isBoolLiteral(exp->value))
+    {
+        this->CreateBranch(exp);
+        this->AddLabelAfterExpression(exp);
+    }
+
+    cb.bpatch(exp->truelist, exp->label);
+}
+
+void LLVM_Comp::endIF(Exp *exp, Statement *st)
+{
+    string after_statement_label = cb.genLabel();
+    cb.bpatch(exp->falselist, after_statement_label);
+}
+
+void LLVM_Comp::startElse(Node *symbol)
+{
+    // Need to have unconditional jump after if to avoid else incase we don't need it
+    string to_emit = "br label @";
+    int location = cb.emit(to_emit);
+
+    // generate label for else and bpatch it with Exp falselist later on
+    symbol->label = cb.genLabel();
+    symbol->nextlist = cb.makelist({location, FIRST});
+}
+
+void LLVM_Comp::endElse(Exp *exp, Statement *s1, Node *else_symbol, Statement *s2)
+{
+    string after_second_statement_label = cb.genLabel();
+    cb.bpatch(else_symbol->nextlist, after_second_statement_label);
+    cb.bpatch(exp->falselist, else_symbol->label);
+    s2->nextlist = cb.merge(s1->nextlist, s2->nextlist);
+}
+
 void LLVM_Comp::start_while()
 {
     string whileCondLabel = cb.genLabel();
     sym.while_labels.push(whileCondLabel);
 }
 
-void LLVM_Comp::end_while()
+void LLVM_Comp::end_while(Exp *exp, Statement *st)
 {
-    
+    string to_emit = "br label %" + sym.while_labels.top();
+    int loc = cb.emit(to_emit);
+    cb.bpatch(cb.merge(exp->falselist, st->nextlist), cb.genLabel());
+    sym.while_labels.pop();
 }
 
 void LLVM_Comp::printCodeBuffer()
 {
     cb.printGlobalBuffer();
     cb.printCodeBuffer();
+}
+
+void LLVM_Comp::mergeLists(Statement *sts, Statement *st)
+{
+    sts->nextlist = cb.merge(sts->nextlist, st->nextlist);
+    sts->truelist = cb.merge(sts->truelist, st->truelist);
+    sts->falselist = cb.merge(sts->falselist, st->falselist);
 }

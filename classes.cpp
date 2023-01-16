@@ -167,7 +167,7 @@ Statement::Statement(Node *symbol)
         }
         string to_emit = "br label @";
         int location = comp.emit(to_emit);
-        this->nextlist = comp.cb.makelist({location,FIRST});
+        this->nextlist = comp.cb.makelist({location, FIRST});
     }
     else if (symbol->value.compare("continue") == 0)
     {
@@ -429,7 +429,7 @@ Exp::Exp(Id *id)
     int offset = ent->getOffset();
     if (offset < 0)
     {
-        this->var_name = "%" + to_string(-offset-1);
+        this->var_name = "%" + to_string(-offset - 1);
     }
     else
     {
@@ -454,7 +454,7 @@ Exp::Exp(Node *n)
         this->value = n->value;
         this->var_name = comp.freshVar();
         string val = (n->value.compare("true") == 0) ? "1" : "0";
-        string to_emit = this->var_name + "= i1 " + val;
+        string to_emit = this->var_name + "= add i1 0," + val;
         comp.emit(to_emit);
     }
     else if (n->type == V_INT)

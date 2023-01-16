@@ -34,8 +34,8 @@ Funcs   :/* Epsilon */
 
 FuncDecl:RetType ID LPAREN Formals RPAREN {comp.declareFunc((Type*)$1, (Id*)$2, (Formals*)$4);} LBRACE Statements RBRACE {comp.closeFunction((Type*)$1); comp.sym.setCurrFunction(); comp.sym.closeScope();} //
 
-RetType :Type {$$ = new Type((Type*)$1);}
-        |VOID {$$ = new Type(V_VOID);}
+RetType :Type {$$ = new Type((Type*)$1);}//
+        |VOID {$$ = new Type(V_VOID);}//
  
 Formals :/* Epsilon */ {$$ = new Formals();}
         |FormalsList {$$ = new Formals((FormalsList*)$1);}
@@ -45,26 +45,25 @@ FormalsList : FormalDecl {$$ = new FormalsList((FormalDecl*)$1);}
 
 FormalDecl  :Type ID {$$ = new FormalDecl((Type*)$1, (Id*)$2);}
 
-Statements  :Statement
-            |Statements Statement
+Statements  :Statement {$$ = (Statement*)$1;} //
+            |Statements Statement {comp.mergeLists((Statement*)$1,(Statement*)$2); $$ = (Statement*)$1;} //
 
-Statement   :LBRACE OPEN_SCOPE Statements CLOSE_SCOPE RBRACE {$$ = $3}
+Statement   :LBRACE OPEN_SCOPE Statements CLOSE_SCOPE RBRACE {$$ = (Statement*)$3;} //
         |Type ID SC {$$ = new Statement((Type*)$1,(Id*)$2);}//
         |Type ID ASSIGN Exp SC {$$ = new Statement((Type*)$1,(Id*)$2,(Exp*)$4);}//
         |ID ASSIGN Exp SC {$$ = new Statement((Id*)$1,(Exp*)$3);}//
         |Call SC {$$ = new Statement((Call*)$1);}//
         |RETURN SC {$$ = new Statement($1);} //
         |RETURN Exp SC {$$ = new Statement($1,(Exp*)$2);} //
-        |IF LPAREN IS_EXP_BOOL RPAREN OPEN_SCOPE Statement CLOSE_SCOPE {} %prec IF
-        |IF LPAREN IS_EXP_BOOL RPAREN OPEN_SCOPE Statement CLOSE_SCOPE ELSE OPEN_SCOPE Statement CLOSE_SCOPE {} %prec IF 
-        |WHILE LPAREN WHILE_M_START IS_EXP_BOOL RPAREN OPEN_SCOPE Statement WHILE_M_FINISH {$$ = comp.end_while((Exp*)$4,(Statement*)$7);}
-        |BREAK SC {$$ = new Statement($1);}
-        |CONTINUE SC {$$ = new Statement($1);}
+        |IF LPAREN EXP_BOOL RPAREN OPEN_SCOPE Statement {comp.endIF((Exp*)$3,(Statement*)$6); comp.sym.closeScope(); $$ = $6;} %prec IF //
+        |IF LPAREN EXP_BOOL RPAREN OPEN_SCOPE Statement START_ELSE Statement {comp.endElse((Exp*)$3,(Statement*)$6,(Node*)$7,(Statement*)$8); comp.sym.closeScope(); $$ = $8;} %prec IF //
+        |WHILE LPAREN WHILE_M_START EXP_BOOL RPAREN OPEN_SCOPE Statement {comp.end_while((Exp*) $4,(Statement*) $7); comp.sym.closeScope();}  //
+        |BREAK SC {$$ = new Statement($1);} //
+        |CONTINUE SC {$$ = new Statement($1);} // 
 
-IS_EXP_BOOL : Exp {comp.sym.checkExpBool((Exp*)$1); $$ = (Exp*)$1;}
-
+EXP_BOOL : Exp {comp.startIF((Exp*)$1); $$ = (Exp*)$1;}
+START_ELSE : ELSE {comp.sym.closeScope();comp.sym.openScope(); comp.startElse((Node*) $1); $$=$1;} 
 WHILE_M_START : /*epsilon*/ {comp.start_while();}
-WHILE_M_FINISH: /*epsilon*/ {comp.end_while(); comp.sym.closeScope();}
 
 Call    :ID LPAREN ExpList RPAREN {$$ = new Call((Id*)$1,(Explist*)$3);}//
         |ID LPAREN RPAREN {$$ = new Call((Id*)$1);}//
@@ -77,7 +76,7 @@ Type    :INT {$$ = new Type(V_INT);}//
         |BOOL {$$ = new Type(V_BOOL);}//
 
 Exp :LPAREN Exp RPAREN {$$ = $2;}//
-    |Exp IF LPAREN Exp RPAREN ELSE Exp {$$ = new Exp ((Exp*)$1, (Exp*)$4, (Exp*)$7);} %prec IF //
+    |Exp IF LPAREN Exp RPAREN ELSE Exp {$$ = new Exp ((Exp*)$1, (Exp*)$4, (Exp*)$7);} %prec IF 
     |Exp BINOP Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //
     |Exp BINOP_MUL_DIV Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //
     |ID {$$ = new Exp ((Id*)$1);} 

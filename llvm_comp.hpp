@@ -26,18 +26,26 @@ public:
 
     LLVM_Comp(LLVM_Comp const &) = delete;      // disable copy ctor
     void operator=(LLVM_Comp const &) = delete; // disable = operator
+
+    void declareFunc(Type *type, Id *id, Formals *formals);
+    void closeFunction(Type *type);
+    void callFunc(Call *exp, string func_id, Var_Type retrunType, vector<Exp *> arg_list);
+    void printCodeBuffer();
+
+    /* ====================  Conditionals ==================== */
     void CreateBranch(Exp *exp);
     void AddLabelAfterExpression(Exp *exp);
     void AndExp(Exp *exp, Exp *e1, Exp *e2);
     void OrExp(Exp *exp, Exp *e1, Exp *e2);
     void RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel);
-    void declareFunc(Type *type, Id *id, Formals *formals);
-    void closeFunction(Type *type);
-    void callFunc(Call *exp, string func_id, Var_Type retrunType, vector<Exp *> arg_list);
     void ExpIfExpElseExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3);
-    void printCodeBuffer();
+    void startIF(Exp *exp);
+    void endIF(Exp *exp, Statement *st);
+    void startElse(Node *symbol);
+    void endElse(Exp *exp, Statement *s1, Node *else_symbol, Statement *s2);
     void start_while();
-    void end_while();
+    void end_while(Exp *exp, Statement *st);
+
     /* ====================  Helper Functions ==================== */
     string freshVar() { return "%t" + to_string(curr_reg++); }
     string globalFreshVar() { return "@str" + to_string(global_reg++); }
@@ -50,6 +58,7 @@ public:
     string whichRelop(string relop, Var_Type type);
     string operationSize(Var_Type type);
     bool isBoolLiteral(string symbol);
+    void mergeLists(Statement *sts, Statement *st);
 };
 
 #endif
