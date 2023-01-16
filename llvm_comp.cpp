@@ -158,7 +158,6 @@ void LLVM_Comp::RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel)
     {
         var_name2 = makeTruncZext(var_name2, operationSize(e1->type), operationSize(type), "zext");
     }
-
     exp->var_name = freshVar();
     string to_emit = exp->var_name + "= icmp " + relop + " " + operationSize(type) + " " + var_name1 + ", " + var_name2;
     cb.emit(to_emit);
@@ -193,6 +192,24 @@ void LLVM_Comp::declareFunc(Type *type, Id *id, Formals *formals)
     stack_for_function = this->freshVar() + "_" + sym.currentFunction;
     code = stack_for_function + " = alloca i32, i32 50";
     cb.emit(code);
+}
+
+string LLVM_Comp::DeclareBool(Exp* exp)
+{
+    string bool_reg = freshVar();
+    string true_label = cb.genLabel();
+    cb.bpatch(exp->truelist, true_label);
+    int location_for_true = emit("br label @");
+    string false_label = cb.genLabel();
+    cb.bpatch(exp->falselist, false_label);
+    int location_for_false = emit("br label @");
+
+    string phi_label = cb.genLabel();
+    cb.bpatch(cb.makelist({location_for_true, FIRST}), phi_label);
+    cb.bpatch(cb.makelist({location_for_false, FIRST}), phi_label);
+    string to_emit = bool_reg + " = phi i1 [ 1, %" + true_label + "], [ 0, %" + false_label + "]";
+    emit(to_emit);
+    return bool_reg;
 }
 
 void LLVM_Comp::closeFunction(Type *type)
@@ -329,6 +346,7 @@ void LLVM_Comp::openGlobalScope()
     cb.emitGlobal("declare void @exit(i32)");
     cb.emitGlobal("@.int_specifier = constant [4 x i8] c\"%d\0A\00\"");
     cb.emitGlobal("@.str_specifier = constant [4 x i8] c\"%s\0A\00\"");
+    cb.emitGlobal("@str = internal constant [22 x i8] c\"Error division by zero\"");
 
     cb.emit("define void @printi(i32) {");
     cb.emit("   %spec_ptr = getelementptr [4 x i8], [4 x i8]* @.int_specifier, i32 0, i32 0");

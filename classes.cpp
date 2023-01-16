@@ -73,9 +73,9 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
         errorMismatch(yylineno);
     }
     symbol->type = t->type;
-    symbol->var_name = comp.freshVar();
-    if (t->type == V_BOOL)
+    if (t->type == V_BOOL && !comp.isBoolLiteral(exp->value))
     {
+        symbol->var_name = comp.DeclareBool(exp);
         // TODO, need to add some things...
     }
     else if (t->type != V_INT)
@@ -107,9 +107,9 @@ Statement::Statement(Id *symbol, Exp *exp)
         errorMismatch(yylineno);
     }
 
-    if (exp->type == V_BOOL)
+    if (exp->type == V_BOOL && !comp.isBoolLiteral(exp->value))
     {
-        // TODOOOOOO
+        exp->var_name = comp.DeclareBool(exp);
     }
 
     else if (exp->type != V_INT)
@@ -320,9 +320,12 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
     }
 
     this->value = e1->value + " " + n->value + " " + e2->value;
-
     this->var_name = comp.freshVar();
     string op = comp.whichOP(n->value, this->type);
+    if((op.compare("udiv") == 0 || op.compare("sdiv") == 0) && e2->value.compare("0") == 0 )
+    {
+        //Need to add what we need to do here...
+    }
     string to_emit = this->var_name + "= " + op + " " + comp.operationSize(this->type) + " " + var_name1 + ", " + var_name2;
     comp.emit(to_emit);
 
