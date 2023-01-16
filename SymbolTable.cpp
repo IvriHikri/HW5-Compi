@@ -80,23 +80,6 @@ void SymbolTable::findMain()
 
 void SymbolTable::closeScope()
 {
-    endScope();
-    Table *t = symbolTables.back();
-    string s;
-    for (TableEntry *ent : t->getEntries())
-    {
-        if (ent->getIsFunc())
-        {
-            s = convertToString(ent->getReturnValue());
-            vector<string> temp = convertToStringVector(ent->getTypes());
-            printID(ent->getName(), ent->getOffset(), makeFunctionType(s, temp));
-        }
-        else
-        {
-            s = convertToString(ent->getTypes()[0]);
-            printID(ent->getName(), ent->getOffset(), s);
-        }
-    }
     symbolTables.pop_back();
     offset.pop();
 }
