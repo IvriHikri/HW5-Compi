@@ -100,7 +100,7 @@ CLOSE_SCOPE: /*epsilon */ {comp.sym.closeScope();}
 
 int main()
 {
-        comp.sym.openScope();
+        comp.openGlobalScope();
         int result = yyparse();
         comp.printCodeBuffer();
         return result;

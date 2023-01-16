@@ -120,11 +120,6 @@ void SymbolTable::addSymbol(Id *symbol, string var_name)
 
 void SymbolTable::declareFunction(Var_Type type, Id *id, Formals *formals)
 {
-    if (symbolTables.empty())
-    {
-        openScope();
-    }
-
     if (isExist(id->value)) // check if Function identifier already exist
     {
         errorDef(yylineno, id->value);

@@ -59,6 +59,7 @@ public:
     string operationSize(Var_Type type);
     bool isBoolLiteral(string symbol);
     void mergeLists(Statement *sts, Statement *st);
+    void openGlobalScope();
 };
 
 #endif
