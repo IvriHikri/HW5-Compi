@@ -252,17 +252,6 @@ Explist::Explist(Exp *exp, Explist *exp_list)
 
 /****************************************   EXP   ****************************************/
 
-// (Exp)
-/*Exp::Exp(Exp *exp)
-{
-    this->value = exp->value;
-    this->type = exp->type;
-    this->var_name = exp->var_name;
-    this->falselist = exp->falselist;
-    this->truelist = exp->truelist;
-    this->nextlist = exp->nextlist;
-}*/
-
 // Exp IF EXP else EXP
 Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
 {
@@ -385,13 +374,6 @@ Exp::Exp(Type *t, Exp *e)
         this->var_name = e->var_name;
     }
 }
-
-// Call
-/*Exp::Exp(Call *c)
-{
-    this->type = c->type;
-    this->value = c->value;
-}*/
 
 // ID
 Exp::Exp(Id *id)
