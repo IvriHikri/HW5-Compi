@@ -35,10 +35,11 @@ public:
     /* ====================  Conditionals ==================== */
     void CreateBranch(Exp *exp);
     void AddLabelAfterExpression(Exp *exp);
-    string DeclareBool(Exp* exp);
+    string DeclareBool(Exp *exp);
     void AndExp(Exp *exp, Exp *e1, Exp *e2);
     void OrExp(Exp *exp, Exp *e1, Exp *e2);
     void RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel);
+    void BinopExp(Exp *exp, Exp *e1, Exp *e2, string operation);
     void ExpIfExpElseExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3);
     void startIF(Exp *exp);
     void endIF(Exp *exp, Statement *st);

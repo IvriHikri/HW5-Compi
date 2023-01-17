@@ -304,32 +304,7 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
     else
         this->type = V_BYTE;
 
-    string var_name1 = e1->var_name;
-    string var_name2 = e2->var_name;
-
-    if (this->type == V_INT)
-    {
-        if (e1->type == V_BYTE)
-        {
-            var_name1 = comp.makeTruncZext(var_name1, "i8", "i32", "zext");
-        }
-        if (e2->type == V_BYTE)
-        {
-            var_name2 = comp.makeTruncZext(var_name2, "i8", "i32", "zext");
-        }
-    }
-
-    this->value = e1->value + " " + n->value + " " + e2->value;
-    this->var_name = comp.freshVar();
-    string op = comp.whichOP(n->value, this->type);
-    if((op.compare("udiv") == 0 || op.compare("sdiv") == 0) && e2->value.compare("0") == 0 )
-    {
-        //Need to add what we need to do here...
-    }
-    string to_emit = this->var_name + "= " + op + " " + comp.operationSize(this->type) + " " + var_name1 + ", " + var_name2;
-    comp.emit(to_emit);
-
-    /*NEED TO CHECK DIV BY ZERO*/
+    comp.BinopExp(this, e1, e2, n->value);
 }
 
 // EXP AND/OR/RELOP EXP

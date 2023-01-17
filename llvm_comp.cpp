@@ -165,6 +165,49 @@ void LLVM_Comp::RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel)
     AddLabelAfterExpression(exp);
 }
 
+void LLVM_Comp::BinopExp(Exp *exp, Exp *e1, Exp *e2, string operation)
+{
+    string var_name1 = e1->var_name;
+    string var_name2 = e2->var_name;
+
+    string op = whichOP(operation, exp->type);
+    if ((op.compare("udiv") == 0 || op.compare("sdiv") == 0))
+    {
+        std::string division_res = freshVar();
+        string to_emit = division_res + " = icmp eq " + operationSize(e2->type) + " 0, " + var_name2;
+        cb.emit(to_emit);
+        to_emit = "br i1 " + division_res + ", label @, label @";
+        int loc = cb.emit(to_emit);
+        std::string divided_by_zero_label = cb.genLabel();
+        cb.bpatch(cb.makelist({loc, FIRST}), divided_by_zero_label);
+
+        std::string divided_by_zero_string = freshVar();
+        cb.emit(divided_by_zero_string + " = " + "getelementptr inbounds [23 x i8], [23 x i8]* @.div_zero_str, i32 0, i32 0");
+        cb.emit("call void @print(i8* " + divided_by_zero_string + ")");
+        cb.emit("call void @exit(i32 0)");
+        std::string not_divided_by_zero_label = cb.genLabel();
+
+        cb.bpatch(cb.makelist({loc, SECOND}), not_divided_by_zero_label);
+    }
+
+    if (exp->type == V_INT)
+    {
+        if (e1->type == V_BYTE)
+        {
+            var_name1 = makeTruncZext(var_name1, "i8", "i32", "zext");
+        }
+        if (e2->type == V_BYTE)
+        {
+            var_name2 = makeTruncZext(var_name2, "i8", "i32", "zext");
+        }
+    }
+
+    exp->value = e1->value + " " + operation + " " + e2->value;
+    exp->var_name = freshVar();
+    string to_emit = exp->var_name + "= " + op + " " + operationSize(exp->type) + " " + var_name1 + ", " + var_name2;
+    cb.emit(to_emit);
+}
+
 string LLVM_Comp::makeTruncZext(std::string var_name, std::string cur_size, std::string new_size, string operation)
 {
     string new_var = freshVar();
@@ -194,7 +237,7 @@ void LLVM_Comp::declareFunc(Type *type, Id *id, Formals *formals)
     cb.emit(code);
 }
 
-string LLVM_Comp::DeclareBool(Exp* exp)
+string LLVM_Comp::DeclareBool(Exp *exp)
 {
     string bool_reg = freshVar();
     string true_label = cb.genLabel();
