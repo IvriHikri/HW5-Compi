@@ -399,15 +399,18 @@ void LLVM_Comp::openGlobalScope()
     cb.emit("@.int_specifier = constant [4 x i8] c\"%d\\0A\\00\"");
     cb.emit("@.str_specifier = constant [4 x i8] c\"%s\\0A\\00\"");
     cb.emit("@.zero_division_str = internal constant [23 x i8] c\"Error division by zero\\00\"");
-    std::string printi_code = "define void @printi(i32) {\n"
-                              "%spec_ptr = getelementptr [4 x i8], [4 x i8]* @.int_specifier, i32 0, i32 0\n"
-                              "call i32 (i8*, ...) @printf(i8* %spec_ptr, i32 %0)\n"
-                              "ret void\n}";
+    string printi_code = "define void @printi(i32) {\n"
+                         "%spec_ptr = getelementptr [4 x i8], [4 x i8]* @.int_specifier, i32 0, i32 0\n"
+                         "call i32 (i8*, ...) @printf(i8* %spec_ptr, i32 %0)\n"
+                         "ret void\n}";
 
-    std::string print_code = "define void @print(i8*) {\n"
-                             "%spec_ptr = getelementptr [4 x i8], [4 x i8]* @.str_specifier, i32 0, i32 0\n"
-                             "call i32 (i8*, ...) @printf(i8* %spec_ptr, i8* %0)\n"
-                             "ret void\n}";
+    string print_code = "define void @print(i8*) {\n"
+                        "%spec_ptr = getelementptr [4 x i8], [4 x i8]* @.str_specifier, i32 0, i32 0\n"
+                        "call i32 (i8*, ...) @printf(i8* %spec_ptr, i8* %0)\n"
+                        "ret void\n}";
+    cb.emit("");
     cb.emit(printi_code);
+    cb.emit("");
     cb.emit(print_code);
+    cb.emit("");
 }
