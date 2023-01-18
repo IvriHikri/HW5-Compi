@@ -73,7 +73,6 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
         errorMismatch(yylineno);
     }
     symbol->type = t->type;
-    symbol->var_name = comp.freshVar();
     if (t->type == V_BOOL && !comp.isBoolLiteral(exp->value))
     {
         symbol->var_name = comp.DeclareBool(exp);
@@ -81,7 +80,11 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
     }
     else if (t->type != V_INT)
     {
-        symbol->var_name = comp.makeTruncZext(symbol->var_name, comp.operationSize(symbol->type), "i32", "zext");
+        symbol->var_name = comp.makeTruncZext(exp->var_name, comp.operationSize(symbol->type), "i32", "zext");
+    }
+    else
+    {
+        symbol->var_name = comp.freshVar();
     }
     symbol->var_name = symbol->var_name + "_For_" + symbol->value;
     comp.sym.addSymbol(symbol, symbol->var_name);
@@ -364,11 +367,11 @@ Exp::Exp(Type *t, Exp *e)
     string v_name = e->var_name;
     if (t->type == V_INT && e->type == V_BYTE)
     {
-        this->var_name = comp.makeTruncZext(e->var_name, comp.operationSize(e->type), comp.operationSize(t->type), "trunc");
+        this->var_name = comp.makeTruncZext(e->var_name, comp.operationSize(e->type), comp.operationSize(t->type), "zext");
     }
     else if (t->type == V_BYTE && e->type == V_INT)
     {
-        this->var_name = comp.makeTruncZext(e->var_name, comp.operationSize(e->type), comp.operationSize(t->type), "zext");
+        this->var_name = comp.makeTruncZext(e->var_name, comp.operationSize(e->type), comp.operationSize(t->type), "trunc");
     }
     else
     {
@@ -432,11 +435,11 @@ Exp::Exp(Node *n)
         string global_name = comp.globalFreshVar();
         n->value.erase(0, 1);
         string str = n->value.erase(n->value.size() - 1); // delete end "
-        string to_emit = global_name + " = constant [" + to_string(str.size() + 1) + " x i8] c\"" + n->value + "\\00\"";
+        string to_emit = global_name + " = internal constant [" + to_string(str.size() + 1) + " x i8] c\"" + n->value + "\\00\"";
         comp.emitGlobal(to_emit);
 
         this->var_name = comp.freshVar();
-        to_emit = this->var_name + " = getelementptr inbounds [" + to_string(str.size() + 1) + " x i8], [" + to_string(str.size() + 1) + " x i8]* " + global_name + ", i32 0, i32 0";
+        to_emit = this->var_name + " = getelementptr [" + to_string(str.size() + 1) + " x i8], [" + to_string(str.size() + 1) + " x i8]* " + global_name + ", i32 0, i32 0";
         comp.emit(to_emit);
     }
 }

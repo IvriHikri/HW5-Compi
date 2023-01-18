@@ -240,9 +240,11 @@ void LLVM_Comp::declareFunc(Type *type, Id *id, Formals *formals)
 
 string LLVM_Comp::DeclareBool(Exp *exp)
 {
-    string bool_reg = freshVar();
+    string temp_reg = freshVar();
+    int location = cb.emit("br label @");
     string true_label = cb.genLabel();
-    cb.bpatch(exp->truelist, true_label);
+    cb.bpatch(cb.merge(exp->truelist, cb.makelist({location,FIRST})), true_label);
+
     int location_for_true = emit("br label @");
     string false_label = cb.genLabel();
     cb.bpatch(exp->falselist, false_label);
@@ -251,8 +253,9 @@ string LLVM_Comp::DeclareBool(Exp *exp)
     string phi_label = cb.genLabel();
     cb.bpatch(cb.makelist({location_for_true, FIRST}), phi_label);
     cb.bpatch(cb.makelist({location_for_false, FIRST}), phi_label);
-    string to_emit = bool_reg + " = phi i1 [ 1, %" + true_label + "], [ 0, %" + false_label + "]";
+    string to_emit = temp_reg + " = phi i1 [ 1, %" + true_label + "], [ 0, %" + false_label + "]";
     emit(to_emit);
+    string bool_reg = makeTruncZext(temp_reg,"i1", "i32", "zext");
     return bool_reg;
 }
 
@@ -333,8 +336,9 @@ void LLVM_Comp::startIF(Exp *exp)
 
 void LLVM_Comp::endIF(Exp *exp, Statement *st)
 {
+    int after_if = cb.emit("br label @");
     string after_statement_label = cb.genLabel();
-    cb.bpatch(exp->falselist, after_statement_label);
+    cb.bpatch(cb.merge(exp->falselist, cb.makelist({after_if, FIRST})), after_statement_label);
 }
 
 void LLVM_Comp::startElse(Node *symbol)
@@ -350,15 +354,18 @@ void LLVM_Comp::startElse(Node *symbol)
 
 void LLVM_Comp::endElse(Exp *exp, Statement *s1, Node *else_symbol, Statement *s2)
 {
+    int after_else = cb.emit("br label @");
     string after_second_statement_label = cb.genLabel();
-    cb.bpatch(else_symbol->nextlist, after_second_statement_label);
+    cb.bpatch(cb.merge(else_symbol->nextlist, cb.makelist({after_else, FIRST})), after_second_statement_label);
     cb.bpatch(exp->falselist, else_symbol->label);
     s2->nextlist = cb.merge(s1->nextlist, s2->nextlist);
 }
 
 void LLVM_Comp::start_while()
 {
+    int before_while = cb.emit("br label @");
     string whileCondLabel = cb.genLabel();
+    cb.bpatch(cb.makelist({before_while, FIRST}), whileCondLabel);
     sym.while_labels.push(whileCondLabel);
 }
 
