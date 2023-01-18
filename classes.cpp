@@ -48,13 +48,13 @@ Statement::Statement(Type *t, Id *symbol)
         errorDef(yylineno, symbol->value);
     }
     symbol->type = t->type;
-    symbol->var_name = comp.freshVar() + "For_" + symbol->value;
+    symbol->var_name = comp.freshVar() + "_For_" + symbol->value;
     string emptyVal = "";
     comp.sym.addSymbol(symbol, symbol->var_name);
 
     TableEntry *ent = comp.sym.getTableEntry(symbol->value);
 
-    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 0, i32" + to_string(ent->getOffset());
+    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32" + to_string(ent->getOffset());
     comp.emit(to_emit);
     string to_emit2 = "store i32 0, i32* " + symbol->var_name;
     comp.emit(to_emit2);
@@ -73,6 +73,7 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
         errorMismatch(yylineno);
     }
     symbol->type = t->type;
+    symbol->var_name = comp.freshVar();
     if (t->type == V_BOOL && !comp.isBoolLiteral(exp->value))
     {
         symbol->var_name = comp.DeclareBool(exp);
@@ -86,7 +87,7 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
     comp.sym.addSymbol(symbol, symbol->var_name);
 
     TableEntry *ent = comp.sym.getTableEntry(symbol->value);
-    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 0, i32 " + to_string(ent->getOffset());
+    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 " + to_string(ent->getOffset());
     comp.emit(to_emit);
     to_emit = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
     comp.emit(to_emit);
@@ -429,12 +430,13 @@ Exp::Exp(Node *n)
         this->value = n->value;
         this->type = V_STRING;
         string global_name = comp.globalFreshVar();
+        n->value.erase(0, 1);
         string str = n->value.erase(n->value.size() - 1); // delete end "
-        string to_emit = global_name + "= internal constant [" + to_string(str.size() + 1) + " x i8] c" + n->value + "\00\"";
+        string to_emit = global_name + " = constant [" + to_string(str.size() + 1) + " x i8] c\"" + n->value + "\\00\"";
         comp.emitGlobal(to_emit);
 
         this->var_name = comp.freshVar();
-        to_emit = this->var_name + " getelementptr [" + to_string(str.size() + 1) + " x i8], [" + to_string(str.size() + 1) + " x i8]* " + global_name + ", i32 0, i32 0";
+        to_emit = this->var_name + " = getelementptr inbounds [" + to_string(str.size() + 1) + " x i8], [" + to_string(str.size() + 1) + " x i8]* " + global_name + ", i32 0, i32 0";
         comp.emit(to_emit);
     }
 }
