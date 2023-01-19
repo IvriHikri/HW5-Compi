@@ -72,28 +72,48 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
     {
         errorMismatch(yylineno);
     }
+
     symbol->type = t->type;
+    string to_emit_get = "";
+    string to_emit_store = "";
     if (t->type == V_BOOL && !comp.isBoolLiteral(exp->value))
     {
         symbol->var_name = comp.DeclareBool(exp);
-        // TODO, need to add some things...
-    }
-    else if (t->type != V_INT)
-    {
-        symbol->var_name = comp.makeTruncZext(exp->var_name, comp.operationSize(symbol->type), "i32", "zext");
+        comp.sym.addSymbol(symbol, symbol->var_name);
+        TableEntry *ent = comp.sym.getTableEntry(symbol->value);
+        to_emit_get = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 " + to_string(ent->getOffset());
+        to_emit_store = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
     }
     else
     {
-        symbol->var_name = comp.freshVar();
+        if (t->type != V_INT)
+        {
+            exp->var_name = comp.makeTruncZext(exp->var_name, comp.operationSize(symbol->type), "i32", "zext");
+        }
+        symbol->var_name = comp.freshVar() + "_For_" + symbol->value;
+        comp.sym.addSymbol(symbol, symbol->var_name);
+        TableEntry *ent = comp.sym.getTableEntry(symbol->value);
+        to_emit_get = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 " + to_string(ent->getOffset());
+        to_emit_store = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
     }
-    symbol->var_name = symbol->var_name + "_For_" + symbol->value;
-    comp.sym.addSymbol(symbol, symbol->var_name);
 
-    TableEntry *ent = comp.sym.getTableEntry(symbol->value);
-    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 " + to_string(ent->getOffset());
-    comp.emit(to_emit);
-    to_emit = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
-    comp.emit(to_emit);
+    comp.emit(to_emit_get);
+    comp.emit(to_emit_store);
+    // else if (t->type != V_INT)
+    // {
+    //     symbol->var_name = comp.makeTruncZext(exp->var_name, comp.operationSize(symbol->type), "i32", "zext");
+    // }
+    // else
+    // {
+    //     symbol->var_name = comp.freshVar();
+    // }
+    // symbol->var_name = symbol->var_name + "_For_" + symbol->value;
+    //
+    // TableEntry *ent = comp.sym.getTableEntry(symbol->value);
+    // string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 " + to_string(ent->getOffset());
+    // comp.emit(to_emit);
+    // to_emit = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
+    // comp.emit(to_emit);
 }
 
 // ID = Exp;
@@ -404,6 +424,12 @@ Exp::Exp(Id *id)
         {
             this->var_name = comp.makeTruncZext(this->var_name, "i32", comp.operationSize(this->type), "trunc");
         }
+    }
+
+    if (this->type == V_BOOL)
+    {
+        comp.CreateBranch(this);
+        comp.AddLabelAfterExpression(this);
     }
 }
 
