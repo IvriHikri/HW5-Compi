@@ -156,7 +156,7 @@ void LLVM_Comp::RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel)
     }
     if (e2->type != type)
     {
-        var_name2 = makeTruncZext(var_name2, operationSize(e1->type), operationSize(type), "zext");
+        var_name2 = makeTruncZext(var_name2, operationSize(e2->type), operationSize(type), "zext");
     }
     exp->var_name = freshVar();
     string to_emit = exp->var_name + "= icmp " + relop + " " + operationSize(type) + " " + var_name1 + ", " + var_name2;

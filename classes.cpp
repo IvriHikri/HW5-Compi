@@ -90,6 +90,10 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
         {
             exp->var_name = comp.makeTruncZext(exp->var_name, comp.operationSize(symbol->type), "i32", "zext");
         }
+        else if (t->type == V_INT && exp->type == V_BYTE)
+        {
+            exp->var_name = comp.makeTruncZext(exp->var_name, comp.operationSize(exp->type), "i32", "zext");
+        }
         symbol->var_name = comp.freshVar() + "_For_" + symbol->value;
         comp.sym.addSymbol(symbol, symbol->var_name);
         TableEntry *ent = comp.sym.getTableEntry(symbol->value);
