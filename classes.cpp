@@ -64,6 +64,8 @@ Statement::Statement(Type *t, Id *symbol)
 Statement::Statement(Type *t, Id *symbol, Exp *exp)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
+    comp.cb.bpatch(comp.cb.makelist({exp->location_for_exp, FIRST}), exp->label_for_exp);
+
     if (comp.sym.isExist(symbol->value))
     {
         errorDef(yylineno, symbol->value);
@@ -111,6 +113,8 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
 Statement::Statement(Id *symbol, Exp *exp)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
+    comp.cb.bpatch(comp.cb.makelist({exp->location_for_exp, FIRST}), exp->label_for_exp);
+
     TableEntry *ent = comp.sym.getTableEntry(symbol->value);
     if (ent == nullptr || ent->getIsFunc())
     {
@@ -141,6 +145,8 @@ Statement::Statement(Id *symbol, Exp *exp)
 Statement::Statement(Node *symbol, Exp *exp)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
+    comp.cb.bpatch(comp.cb.makelist({exp->location_for_exp, FIRST}), exp->label_for_exp);
+
     if (symbol->value.compare("return") == 0)
     {
         TableEntry *ent = comp.sym.getTableEntry(comp.sym.currentFunction);
@@ -153,12 +159,12 @@ Statement::Statement(Node *symbol, Exp *exp)
         {
             exp->var_name = comp.DeclareBool(exp);
         }
-        if(exp->type == V_BYTE && ent->getReturnValue() == V_INT)
+        if (exp->type == V_BYTE && ent->getReturnValue() == V_INT)
         {
-            exp->var_name = comp.makeTruncZext(exp->var_name,"i8","i32","zext");
+            exp->var_name = comp.makeTruncZext(exp->var_name, "i8", "i32", "zext");
             type = "i32";
         }
-        
+
         string to_emit = "ret " + type + " " + exp->var_name;
         comp.emit(to_emit);
     }
@@ -266,19 +272,19 @@ Call::Call(Id *symbol, Explist *exp_list)
 /****************************************   EXP_LIST   ****************************************/
 Explist::Explist(Exp *exp)
 {
-    LLVM_Comp& comp = LLVM_Comp::getInstance();
-    if(exp->type == V_BOOL && !(comp.isBoolLiteral(exp->value)))
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
+    if (exp->type == V_BOOL && !(comp.isBoolLiteral(exp->value)))
     {
-        comp.DecalreBoolArgFunc(exp);     
+        comp.DecalreBoolArgFunc(exp);
     }
     this->exp_list.insert(this->exp_list.begin(), exp);
 }
 
 Explist::Explist(Exp *exp, Explist *exp_list)
 {
-    LLVM_Comp& comp = LLVM_Comp::getInstance();
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
     this->exp_list = vector<Exp *>(exp_list->exp_list);
-    if(exp->type == V_BOOL && !(comp.isBoolLiteral(exp->value)))
+    if (exp->type == V_BOOL && !(comp.isBoolLiteral(exp->value)))
     {
         comp.DecalreBoolArgFunc(exp);
     }
@@ -287,7 +293,7 @@ Explist::Explist(Exp *exp, Explist *exp_list)
 
 /****************************************   EXP   ****************************************/
 
-Exp::Exp(Exp* exp)
+Exp::Exp(Exp *exp)
 {
     this->value = exp->value;
     this->var_name = exp->var_name;
@@ -296,6 +302,8 @@ Exp::Exp(Exp* exp)
     this->falselist = exp->falselist;
     this->nextlist = exp->nextlist;
     this->label = exp->label;
+    this->location_for_exp = exp->location_for_exp;
+    this->label_for_exp = exp->label_for_exp;
 }
 
 // Exp IF EXP else EXP
@@ -329,6 +337,10 @@ Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
 Exp::Exp(Exp *e1, Node *n, Exp *e2)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
+    string exp_label = "br label @";
+    this->location_for_exp = comp.emit(exp_label);
+    this->label_for_exp = comp.cb.genLabel();
+
     if (!comp.sym.isValidTypesOperation(e1->type, e2->type))
     {
         errorMismatch(yylineno);
@@ -346,6 +358,10 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
 Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
+    string exp_label = "br label @";
+    this->location_for_exp = comp.emit(exp_label);
+    this->label_for_exp = comp.cb.genLabel();
+
     this->type = V_BOOL;
     if (e1->type == V_BOOL && e2->type == V_BOOL)
     {
@@ -377,6 +393,12 @@ Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
 Exp::Exp(Node *n, Exp *e)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
+    comp.cb.bpatch(comp.cb.makelist({e->location_for_exp, FIRST}), e->label_for_exp);
+
+    string exp_label = "br label @";
+    this->location_for_exp = comp.emit(exp_label);
+    this->label_for_exp = comp.cb.genLabel();
+
     if (e->type != V_BOOL)
         errorMismatch(yylineno);
 
@@ -401,6 +423,12 @@ Exp::Exp(Node *n, Exp *e)
 Exp::Exp(Type *t, Exp *e)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
+    comp.cb.bpatch(comp.cb.makelist({e->location_for_exp, FIRST}), e->label_for_exp);
+
+    string exp_label = "br label @";
+    this->location_for_exp = comp.emit(exp_label);
+    this->label_for_exp = comp.cb.genLabel();
+
     if (t->type != e->type)
     {
         if (!comp.sym.isValidTypesOperation(t->type, e->type))
@@ -466,6 +494,10 @@ Exp::Exp(Id *id)
 Exp::Exp(Node *n)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
+    string emit_exp = "br label @";
+    this->location_for_exp = comp.emit(emit_exp);
+    this->label_for_exp = comp.cb.genLabel();
+
     this->value = n->value;
     if (comp.isBoolLiteral(n->value))
     {
@@ -489,7 +521,7 @@ Exp::Exp(Node *n)
         this->type = V_STRING;
         string global_name = comp.globalFreshVar();
         n->value.erase(0, 1);
-        string str = n->value.erase(n->value.size() - 1); // delete end "
+        string str = n->value.erase(n->value.size() - 1);
         string to_emit = global_name + " = internal constant [" + to_string(str.size() + 1) + " x i8] c\"" + n->value + "\\00\"";
         comp.emitGlobal(to_emit);
 
@@ -503,6 +535,10 @@ Exp::Exp(Node *n)
 Exp::Exp(Node *n1, Node *n2)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
+    string emit_exp = "br label @";
+    this->location_for_exp = comp.emit(emit_exp);
+    this->label_for_exp = comp.cb.genLabel();
+
     if (n1->type != V_INT || n2->value.compare("b") != 0)
         errorMismatch(yylineno);
 

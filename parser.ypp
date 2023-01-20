@@ -80,7 +80,7 @@ Type    :INT {$$ = new Type(V_INT);}//
         |BYTE {$$ = new Type(V_BYTE);}//
         |BOOL {$$ = new Type(V_BOOL);}//
 
-Exp :LPAREN Exp RPAREN {$$ = new Exp((Exp*)$2);}//
+Exp :LPAREN Exp RPAREN {$$ = $2;}//
     |Exp IF LPAREN Exp RPAREN ELSE Exp {$$ = new Exp ((Exp*)$1, (Exp*)$4, (Exp*)$7);} %prec IF 
     |Exp BINOP Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //
     |Exp BINOP_MUL_DIV Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //

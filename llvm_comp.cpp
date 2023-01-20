@@ -116,6 +116,9 @@ void LLVM_Comp::AddLabelAfterExpression(Exp *exp)
 void LLVM_Comp::AndExp(Exp *exp, Exp *e1, Exp *e2)
 {
     cb.bpatch(e1->truelist, e1->label);
+    cb.bpatch(cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
+    cb.bpatch(cb.makelist({e2->location_for_exp, FIRST}), e2->label_for_exp);
+
     if (isBoolLiteral(e2->value))
     {
         CreateBranch(e2);
@@ -131,6 +134,9 @@ void LLVM_Comp::AndExp(Exp *exp, Exp *e1, Exp *e2)
 void LLVM_Comp::OrExp(Exp *exp, Exp *e1, Exp *e2)
 {
     cb.bpatch(e1->falselist, e1->label);
+    cb.bpatch(cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
+    cb.bpatch(cb.makelist({e2->location_for_exp, FIRST}), e2->label_for_exp);
+
     if (isBoolLiteral(e2->value))
     {
         CreateBranch(e2);
@@ -144,6 +150,9 @@ void LLVM_Comp::OrExp(Exp *exp, Exp *e1, Exp *e2)
 
 void LLVM_Comp::RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel)
 {
+    cb.bpatch(cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
+    cb.bpatch(cb.makelist({e2->location_for_exp, FIRST}), e2->label_for_exp);
+
     Var_Type type = (e1->type == V_BYTE && e2->type == V_BYTE) ? V_BYTE : V_INT;
     string relop = whichRelop(rel, type);
 
@@ -167,6 +176,8 @@ void LLVM_Comp::RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel)
 
 void LLVM_Comp::BinopExp(Exp *exp, Exp *e1, Exp *e2, string operation)
 {
+    cb.bpatch(cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
+    cb.bpatch(cb.makelist({e2->location_for_exp, FIRST}), e2->label_for_exp);
     string var_name1 = e1->var_name;
     string var_name2 = e2->var_name;
 
@@ -238,8 +249,6 @@ void LLVM_Comp::declareFunc(Type *type, Id *id, Formals *formals)
     cb.emit(code);
 }
 
-
-
 string LLVM_Comp::DeclareBool(Exp *exp)
 {
     string temp_reg = freshVar();
@@ -260,7 +269,7 @@ string LLVM_Comp::DeclareBool(Exp *exp)
     return temp_reg;
 }
 
-void LLVM_Comp::DecalreBoolArgFunc(Exp* exp)
+void LLVM_Comp::DecalreBoolArgFunc(Exp *exp)
 {
     int start_of_exp_label = cb.emit("br label @");
     string true_label = cb.genLabel();

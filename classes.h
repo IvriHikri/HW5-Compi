@@ -28,7 +28,10 @@ public:
     string value;
     Var_Type type;
     string var_name;
-    std::string label;
+    string label;
+
+    int location_for_exp;
+    string label_for_exp;
 
     vector<pair<int, BranchLabelIndex>> truelist;
     vector<pair<int, BranchLabelIndex>> falselist;
