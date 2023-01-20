@@ -15,12 +15,16 @@
         LLVM_Comp &comp = LLVM_Comp::getInstance();
 %}
 
+
 %nonassoc VOID INT BYTE B BOOL
 %right ID NUM STRING
 %right ASSIGN
-%left OR AND
+%left OR
+%left AND
 %nonassoc TRUE FALSE RETURN IF WHILE BREAK CONTINUE COMMA 
-%left RELOP_EQ RELOP BINOP 
+%left RELOP_EQ 
+%nonassoc RELOP 
+%left BINOP 
 %left BINOP_MUL_DIV
 %right NOT
 %left LPAREN RPAREN LBRACE RBRACE SC
@@ -76,12 +80,12 @@ Type    :INT {$$ = new Type(V_INT);}//
         |BYTE {$$ = new Type(V_BYTE);}//
         |BOOL {$$ = new Type(V_BOOL);}//
 
-Exp :LPAREN Exp RPAREN {$$ = $2;}//
+Exp :LPAREN Exp RPAREN {$$ = new Exp((Exp*)$2);}//
     |Exp IF LPAREN Exp RPAREN ELSE Exp {$$ = new Exp ((Exp*)$1, (Exp*)$4, (Exp*)$7);} %prec IF 
     |Exp BINOP Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //
     |Exp BINOP_MUL_DIV Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //
     |ID {$$ = new Exp ((Id*)$1);} 
-    |Call {$$ = $1;} //
+    |Call {if(((Call*)$1)->type == V_BOOL){comp.CreateBranch((Exp*)$1);comp.AddLabelAfterExpression((Exp*)$1);} $$ = $1;} //
     |NUM {$$ = new Exp ($1);} //
     |NUM B {$$ = new Exp ($1, $2);} // 
     |STRING {$$ = new Exp ($1);} //

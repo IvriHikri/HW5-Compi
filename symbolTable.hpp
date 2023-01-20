@@ -13,10 +13,11 @@ class TableEntry
     int offset;
     bool isFunc;
     string var_name;
+    string value;
 
 public:
     TableEntry();
-    explicit TableEntry(string name, Var_Type type, int offset, string var_name) // for single symbol
+    explicit TableEntry(string name, Var_Type type, int offset, string var_name, string value="") // for single symbol
     {
         this->name = name;
         this->types = vector<Var_Type>(1, type);
@@ -24,6 +25,7 @@ public:
         this->offset = offset;
         this->isFunc = false;
         this->var_name = var_name;
+        this->value = value;
     }
 
     explicit TableEntry(string &name, vector<Var_Type> &types, Var_Type returnValue, int offset) // for function
@@ -44,6 +46,7 @@ public:
     int getOffset() { return this->offset; }
     string getVarName() { return var_name; }
     bool getIsFunc() { return this->isFunc; }
+    string getValue() { return this->value; }
 };
 
 class Table
@@ -73,7 +76,7 @@ class SymbolTable{
 
     SymbolTable();
     static SymbolTable &instance();
-    void addSymbol(Id *symbol, string var_name);
+    void addSymbol(Id *symbol, string var_name, string value="");
     void declareFunction(Var_Type type, Id* id, Formals *formals);
     bool isExist(string id);
     TableEntry *getTableEntry(string id);

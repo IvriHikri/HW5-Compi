@@ -238,13 +238,14 @@ void LLVM_Comp::declareFunc(Type *type, Id *id, Formals *formals)
     cb.emit(code);
 }
 
+
+
 string LLVM_Comp::DeclareBool(Exp *exp)
 {
     string temp_reg = freshVar();
     int location = cb.emit("br label @");
     string true_label = cb.genLabel();
     cb.bpatch(cb.merge(exp->truelist, cb.makelist({location, FIRST})), true_label);
-
     int location_for_true = emit("br label @");
     string false_label = cb.genLabel();
     cb.bpatch(exp->falselist, false_label);
@@ -255,8 +256,27 @@ string LLVM_Comp::DeclareBool(Exp *exp)
     cb.bpatch(cb.makelist({location_for_false, FIRST}), phi_label);
     string to_emit = temp_reg + " = phi i1 [ 1, %" + true_label + "], [ 0, %" + false_label + "]";
     emit(to_emit);
-    string bool_reg = makeTruncZext(temp_reg, "i1", "i32", "zext");
-    return bool_reg;
+
+    return temp_reg;
+}
+
+void LLVM_Comp::DecalreBoolArgFunc(Exp* exp)
+{
+    int start_of_exp_label = cb.emit("br label @");
+    string true_label = cb.genLabel();
+    cb.bpatch(exp->truelist, true_label);
+    int true_label_location = cb.emit("br label @");
+    string false_label = cb.genLabel();
+    cb.bpatch(exp->falselist, false_label);
+    int false_label_location = cb.emit("br label @");
+    std::string phi_label = cb.genLabel();
+    cb.bpatch(cb.makelist({true_label_location, FIRST}), phi_label);
+    cb.bpatch(cb.makelist({false_label_location, FIRST}), phi_label);
+    exp->var_name = freshVar();
+    cb.emit(exp->var_name + " = phi i1 [ 1, %" + true_label + "], [ 0, %" + false_label + "]");
+    cb.emit("br label %" + exp->label);
+    string jump_label = cb.genLabel();
+    cb.bpatch(cb.makelist({start_of_exp_label, FIRST}), jump_label);
 }
 
 void LLVM_Comp::closeFunction(Type *type)
@@ -330,7 +350,6 @@ void LLVM_Comp::startIF(Exp *exp)
         this->CreateBranch(exp);
         this->AddLabelAfterExpression(exp);
     }
-
     cb.bpatch(exp->truelist, exp->label);
 }
 

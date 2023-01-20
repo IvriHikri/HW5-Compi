@@ -90,14 +90,14 @@ void SymbolTable::closeGlobalScope()
     closeScope();
 }
 
-void SymbolTable::addSymbol(Id *symbol, string var_name)
+void SymbolTable::addSymbol(Id *symbol, string var_name,string value)
 {
     if (isExist(symbol->value))
     {
         errorDef(yylineno, symbol->value);
     }
 
-    symbolTables.back()->getEntries().emplace_back(new TableEntry(symbol->value, symbol->type, offset.top(), var_name));
+    symbolTables.back()->getEntries().emplace_back(new TableEntry(symbol->value, symbol->type, offset.top(), var_name, value));
     offset.top()++;
 }
 
@@ -189,10 +189,9 @@ void SymbolTable::setCurrFunction(string newFunc)
 
 bool SymbolTable::isValidTypesOperation(Var_Type type1, Var_Type type2)
 {
-    if (!(type1 == V_INT || type1 == V_BYTE) && !(type2 == V_INT || type2 == V_BYTE))
+    if ((type1 == V_INT || type1 == V_BYTE) && (type2 == V_INT || type2 == V_BYTE))
     {
-        return false;
+        return true;      
     }
-
-    return true;
+    return false;
 }

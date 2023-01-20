@@ -54,7 +54,7 @@ Statement::Statement(Type *t, Id *symbol)
 
     TableEntry *ent = comp.sym.getTableEntry(symbol->value);
 
-    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32" + to_string(ent->getOffset());
+    string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 " + to_string(ent->getOffset());
     comp.emit(to_emit);
     string to_emit2 = "store i32 0, i32* " + symbol->var_name;
     comp.emit(to_emit2);
@@ -78,7 +78,9 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
     string to_emit_store = "";
     if (t->type == V_BOOL && !comp.isBoolLiteral(exp->value))
     {
-        symbol->var_name = comp.DeclareBool(exp);
+        exp->var_name = comp.DeclareBool(exp);
+        exp->var_name = comp.makeTruncZext(exp->var_name, "i1", "i32", "zext");
+        symbol->var_name = comp.freshVar() + "_For_" + symbol->value;
         comp.sym.addSymbol(symbol, symbol->var_name);
         TableEntry *ent = comp.sym.getTableEntry(symbol->value);
         to_emit_get = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 " + to_string(ent->getOffset());
@@ -95,7 +97,7 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
             exp->var_name = comp.makeTruncZext(exp->var_name, comp.operationSize(exp->type), "i32", "zext");
         }
         symbol->var_name = comp.freshVar() + "_For_" + symbol->value;
-        comp.sym.addSymbol(symbol, symbol->var_name);
+        comp.sym.addSymbol(symbol, symbol->var_name, exp->value);
         TableEntry *ent = comp.sym.getTableEntry(symbol->value);
         to_emit_get = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 " + to_string(ent->getOffset());
         to_emit_store = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
@@ -103,21 +105,6 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
 
     comp.emit(to_emit_get);
     comp.emit(to_emit_store);
-    // else if (t->type != V_INT)
-    // {
-    //     symbol->var_name = comp.makeTruncZext(exp->var_name, comp.operationSize(symbol->type), "i32", "zext");
-    // }
-    // else
-    // {
-    //     symbol->var_name = comp.freshVar();
-    // }
-    // symbol->var_name = symbol->var_name + "_For_" + symbol->value;
-    //
-    // TableEntry *ent = comp.sym.getTableEntry(symbol->value);
-    // string to_emit = symbol->var_name + " = getelementptr i32, i32* " + comp.get_stack_for_function() + ", i32 " + to_string(ent->getOffset());
-    // comp.emit(to_emit);
-    // to_emit = "store i32 " + exp->var_name + ", i32* " + symbol->var_name;
-    // comp.emit(to_emit);
 }
 
 // ID = Exp;
@@ -140,7 +127,7 @@ Statement::Statement(Id *symbol, Exp *exp)
         exp->var_name = comp.DeclareBool(exp);
     }
 
-    else if (exp->type != V_INT)
+    if (exp->type != V_INT)
     {
         exp->var_name = comp.makeTruncZext(exp->var_name, comp.operationSize(exp->type), "i32", "zext");
     }
@@ -157,11 +144,21 @@ Statement::Statement(Node *symbol, Exp *exp)
     if (symbol->value.compare("return") == 0)
     {
         TableEntry *ent = comp.sym.getTableEntry(comp.sym.currentFunction);
+        string type = comp.operationSize(exp->type);
         if (ent->getReturnValue() == V_VOID || !comp.sym.checkReturnType(exp->type))
         {
             errorMismatch(yylineno);
         }
-        string type = comp.operationSize(exp->type);
+        if (exp->type == V_BOOL && !comp.isBoolLiteral(exp->value))
+        {
+            exp->var_name = comp.DeclareBool(exp);
+        }
+        if(exp->type == V_BYTE && ent->getReturnValue() == V_INT)
+        {
+            exp->var_name = comp.makeTruncZext(exp->var_name,"i8","i32","zext");
+            type = "i32";
+        }
+        
         string to_emit = "ret " + type + " " + exp->var_name;
         comp.emit(to_emit);
     }
@@ -269,16 +266,37 @@ Call::Call(Id *symbol, Explist *exp_list)
 /****************************************   EXP_LIST   ****************************************/
 Explist::Explist(Exp *exp)
 {
+    LLVM_Comp& comp = LLVM_Comp::getInstance();
+    if(exp->type == V_BOOL && !(comp.isBoolLiteral(exp->value)))
+    {
+        comp.DecalreBoolArgFunc(exp);     
+    }
     this->exp_list.insert(this->exp_list.begin(), exp);
 }
 
 Explist::Explist(Exp *exp, Explist *exp_list)
 {
+    LLVM_Comp& comp = LLVM_Comp::getInstance();
     this->exp_list = vector<Exp *>(exp_list->exp_list);
+    if(exp->type == V_BOOL && !(comp.isBoolLiteral(exp->value)))
+    {
+        comp.DecalreBoolArgFunc(exp);
+    }
     this->exp_list.insert(this->exp_list.begin(), exp);
 }
 
 /****************************************   EXP   ****************************************/
+
+Exp::Exp(Exp* exp)
+{
+    this->value = exp->value;
+    this->var_name = exp->var_name;
+    this->type = exp->type;
+    this->truelist = exp->truelist;
+    this->falselist = exp->falselist;
+    this->nextlist = exp->nextlist;
+    this->label = exp->label;
+}
 
 // Exp IF EXP else EXP
 Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
@@ -363,13 +381,20 @@ Exp::Exp(Node *n, Exp *e)
         errorMismatch(yylineno);
 
     this->type = V_BOOL;
-    if (comp.isBoolLiteral(n->value))
-    {
-        this->value = n->value == "true" ? "false" : "true";
-    }
-
     this->truelist = e->falselist;
     this->falselist = e->truelist;
+    this->label = e->label;
+    this->var_name = e->var_name;
+    this->nextlist = e->nextlist;
+    this->value = e->value;
+
+    if (comp.isBoolLiteral(e->value))
+    {
+        this->value = e->value == "true" ? "false" : "true";
+        this->var_name = comp.freshVar();
+        string to_emit = this->var_name + " = add i1 0, " + ((this->value == "true") ? "1" : "0");
+        comp.emit(to_emit);
+    }
 }
 
 // (TYPE) EXP
@@ -412,7 +437,7 @@ Exp::Exp(Id *id)
     {
         errorUndef(yylineno, id->value);
     }
-    this->value = ent->getName();
+    this->value = ent->getValue();
     this->type = ent->getTypes()[0];
     int offset = ent->getOffset();
     if (offset < 0)
@@ -430,7 +455,7 @@ Exp::Exp(Id *id)
         }
     }
 
-    if (this->type == V_BOOL)
+    if (this->type == V_BOOL && !comp.isBoolLiteral(this->value))
     {
         comp.CreateBranch(this);
         comp.AddLabelAfterExpression(this);
