@@ -357,6 +357,22 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
 
     comp.BinopExp(this, e1, e2, n->value);
 }
+Exp::Exp (Call* c)
+{
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
+    string exp_label = "br label @";
+    this->location_for_exp = comp.emit(exp_label);
+    this->label_for_exp = comp.cb.genLabel();
+    this->actul_label_exp = actul_label_exp;
+    this->actual_location_exp = location_for_exp;
+    this-> value = c->value;
+    this-> type = c->type;
+    this->var_name = c->var_name;
+    this->truelist = c->truelist;
+    this->falselist = c->falselist;
+    this->nextlist = c->nextlist;
+    this->label = c->label;
+}
 
 // EXP AND/OR/RELOP EXP
 Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
