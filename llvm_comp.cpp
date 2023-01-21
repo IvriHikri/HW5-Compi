@@ -386,7 +386,7 @@ void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
     exp->actul_label_exp = e1->actul_label_exp;
     exp->actual_location_exp = e1->location_for_exp;
 
-    // Beofre E1 go to E2
+    // Before E1 go to E2
     cb.bpatch(cb.makelist({e1->actual_location_exp, FIRST}), e2->actul_label_exp);
 
     // After E1 go to final label
