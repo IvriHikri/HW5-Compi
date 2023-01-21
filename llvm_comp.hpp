@@ -41,7 +41,7 @@ public:
     void OrExp(Exp *exp, Exp *e1, Exp *e2);
     void RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel);
     void BinopExp(Exp *exp, Exp *e1, Exp *e2, string operation);
-    void ExpIfExpElseExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3);
+    void TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3);
     void startIF(Exp *exp);
     void endIF(Exp *exp, Statement *st);
     void startElse(Node *symbol);

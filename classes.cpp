@@ -312,6 +312,7 @@ Exp::Exp(Exp *exp)
 Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
+
     if (e2->type != V_BOOL || (e1->type != e3->type && !comp.sym.isValidTypesOperation(e1->type, e3->type)))
     {
         errorMismatch(yylineno);
@@ -332,7 +333,7 @@ Exp::Exp(Exp *e1, Exp *e2, Exp *e3)
             e3->var_name = comp.makeTruncZext(e3->var_name, "i8", "i32", "zext");
         }
     }
-    comp.ExpIfExpElseExp(this, e1, e2, e3);
+    comp.TrinaryExp(this, e1, e2, e3);
 }
 
 // EXP BINOP EXP
@@ -357,7 +358,7 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
 
     comp.BinopExp(this, e1, e2, n->value);
 }
-Exp::Exp (Call* c)
+Exp::Exp(Call *c)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
     string exp_label = "br label @";
@@ -365,8 +366,8 @@ Exp::Exp (Call* c)
     this->label_for_exp = comp.cb.genLabel();
     this->actul_label_exp = actul_label_exp;
     this->actual_location_exp = location_for_exp;
-    this-> value = c->value;
-    this-> type = c->type;
+    this->value = c->value;
+    this->type = c->type;
     this->var_name = c->var_name;
     this->truelist = c->truelist;
     this->falselist = c->falselist;

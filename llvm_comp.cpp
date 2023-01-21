@@ -335,19 +335,73 @@ void LLVM_Comp::callFunc(Call *call, string func_name, Var_Type retrunType, vect
     cb.emit(code);
 }
 
-void LLVM_Comp::ExpIfExpElseExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
+void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
 {
+
+    string check = "";
+    int location = cb.emit("br label @");
+    string label_before = cb.genLabel();
+    // cb.emit("this label is label_before");
+    if (isBoolLiteral(e2->value))
+    {
+        CreateBranch(e2);
+        check = cb.genLabel();
+        // cb.emit("this label is check");
+    }
     int loc = cb.emit("br label @");
     string final_label = cb.genLabel();
-    exp->location_for_exp = cb.emit("br label @");
+    // cb.emit("this label is final_label");
+    int loc2 = cb.emit("br label @");
+    string phi_label = cb.genLabel();
+    // cb.emit("this label is phi_label");
+
+    // Insert phi
+    exp->var_name = freshVar();
+    cb.bpatch(cb.merge(cb.makelist({loc, FIRST}), cb.makelist({loc2, FIRST})), phi_label);
+
+    string size = "";
+    if (e1->type == e3->type)
+    {
+        size = operationSize(e1->type);
+    }
+    else // Already know its int or byte
+    {
+        size = "i32";
+    }
+
+    string to_emit = exp->var_name + " = phi " + size + " [ " + e1->var_name + ", %" + check + "], [ " + e3->var_name + ", %" + final_label + "]";
+    emit(to_emit);
+
+    // Create br and label for trinary exp like any other expression
+    string exp_label = "br label @";
+    exp->location_for_exp = cb.emit(exp_label);
     exp->label_for_exp = cb.genLabel();
+    // cb.emit("this label is label_for_exp(Trinary)");
+    exp->actul_label_exp = e1->actul_label_exp;
+    exp->actual_location_exp = e1->location_for_exp;
 
-    cb.bpatch(cb.makelist({e1->location_for_exp, FIRST}), e2->label_for_exp);
-    cb.bpatch(cb.merge(cb.makelist({loc, FIRST}), cb.makelist({e2->location_for_exp, FIRST})), final_label);
-    cb.bpatch(cb.makelist({e3->location_for_exp, FIRST}), e3->label_for_exp);
+    // Beofre E1 go to E2
+    cb.bpatch(cb.makelist({e1->location_for_exp, FIRST}), e2->actul_label_exp);
 
-    cb.bpatch(e2->truelist, e1->label_for_exp);
-    cb.bpatch(e2->falselist, e3->label_for_exp);
+    // After E1 go to final label
+    cb.bpatch(cb.makelist({e2->location_for_exp, FIRST}), check);
+
+    // After E3 go to final_2
+    cb.bpatch(cb.makelist({location, FIRST}), final_label);
+
+    // After E2 we go according to true/false lists but need to bpatch before E3
+    if (isBoolLiteral(e2->value))
+    {
+        cb.bpatch(cb.makelist({e3->location_for_exp, FIRST}), label_before);
+    }
+    else
+    {
+        cb.bpatch(cb.makelist({e3->location_for_exp, FIRST}), e3->label_for_exp);
+    }
+
+    // Fix true/false list for E2
+    cb.bpatch(e2->truelist, e1->actul_label_exp);
+    cb.bpatch(e2->falselist, e3->actul_label_exp);
 }
 
 void LLVM_Comp::startIF(Exp *exp)
