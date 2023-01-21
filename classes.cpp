@@ -304,6 +304,8 @@ Exp::Exp(Exp *exp)
     this->label = exp->label;
     this->location_for_exp = exp->location_for_exp;
     this->label_for_exp = exp->label_for_exp;
+    this->actul_label_exp = exp->actul_label_exp;
+    this->actual_location_exp = exp->actual_location_exp;
 }
 
 // Exp IF EXP else EXP
@@ -340,6 +342,8 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
     string exp_label = "br label @";
     this->location_for_exp = comp.emit(exp_label);
     this->label_for_exp = comp.cb.genLabel();
+    this->actul_label_exp = e1->actul_label_exp;
+    this->actual_location_exp = e1->location_for_exp;
 
     if (!comp.sym.isValidTypesOperation(e1->type, e2->type))
     {
@@ -361,6 +365,8 @@ Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
     string exp_label = "br label @";
     this->location_for_exp = comp.emit(exp_label);
     this->label_for_exp = comp.cb.genLabel();
+    this->actul_label_exp = e1->actul_label_exp;
+    this->actual_location_exp = e1->location_for_exp;
 
     this->type = V_BOOL;
     if (e1->type == V_BOOL && e2->type == V_BOOL)
@@ -398,6 +404,8 @@ Exp::Exp(Node *n, Exp *e)
     string exp_label = "br label @";
     this->location_for_exp = comp.emit(exp_label);
     this->label_for_exp = comp.cb.genLabel();
+    this->actul_label_exp = label_for_exp;
+    this->actual_location_exp = location_for_exp;
 
     if (e->type != V_BOOL)
         errorMismatch(yylineno);
@@ -428,6 +436,8 @@ Exp::Exp(Type *t, Exp *e)
     string exp_label = "br label @";
     this->location_for_exp = comp.emit(exp_label);
     this->label_for_exp = comp.cb.genLabel();
+    this->actul_label_exp = label_for_exp;
+    this->actual_location_exp = location_for_exp;
 
     if (t->type != e->type)
     {
@@ -461,6 +471,12 @@ Exp::Exp(Id *id)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
     TableEntry *ent = comp.sym.getTableEntry(id->value);
+
+    string exp_label = "br label @";
+    this->location_for_exp = comp.emit(exp_label);
+    this->label_for_exp = comp.cb.genLabel();
+    this->actul_label_exp = label_for_exp;
+    this->actual_location_exp = location_for_exp;
     if (ent == nullptr || ent->getIsFunc())
     {
         errorUndef(yylineno, id->value);
@@ -497,6 +513,8 @@ Exp::Exp(Node *n)
     string emit_exp = "br label @";
     this->location_for_exp = comp.emit(emit_exp);
     this->label_for_exp = comp.cb.genLabel();
+    this->actul_label_exp = label_for_exp;
+    this->actual_location_exp = location_for_exp;
 
     this->value = n->value;
     if (comp.isBoolLiteral(n->value))
@@ -538,6 +556,8 @@ Exp::Exp(Node *n1, Node *n2)
     string emit_exp = "br label @";
     this->location_for_exp = comp.emit(emit_exp);
     this->label_for_exp = comp.cb.genLabel();
+    this->actul_label_exp = label_for_exp;
+    this->actual_location_exp = location_for_exp;
 
     if (n1->type != V_INT || n2->value.compare("b") != 0)
         errorMismatch(yylineno);

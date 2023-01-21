@@ -278,6 +278,7 @@ void LLVM_Comp::DecalreBoolArgFunc(Exp *exp)
     string false_label = cb.genLabel();
     cb.bpatch(exp->falselist, false_label);
     int false_label_location = cb.emit("br label @");
+
     std::string phi_label = cb.genLabel();
     cb.bpatch(cb.makelist({true_label_location, FIRST}), phi_label);
     cb.bpatch(cb.makelist({false_label_location, FIRST}), phi_label);
@@ -318,6 +319,7 @@ void LLVM_Comp::callFunc(Call *call, string func_name, Var_Type retrunType, vect
     {
         for (Exp *e : arg_list)
         {
+            cb.bpatch(cb.makelist({e->location_for_exp, FIRST}), e->label_for_exp);
             if (temp[index] == V_INT && e->type == V_BYTE)
             {
                 e->var_name = makeTruncZext(e->var_name, "i8", "i32", "zext");
@@ -335,20 +337,17 @@ void LLVM_Comp::callFunc(Call *call, string func_name, Var_Type retrunType, vect
 
 void LLVM_Comp::ExpIfExpElseExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
 {
-    exp->var_name = freshVar();
-    string type = operationSize(exp->type);
-    CreateBranch(e2);
-    AddLabelAfterExpression(e2);
-    cb.bpatch(e2->truelist, e2->label);
-    string to_emit = exp->var_name + " = " + type + " " + e1->var_name;
-    cb.emit(to_emit);
-    int location = cb.emit("br label @");
-    string false_label = cb.genLabel();
-    cb.bpatch(e2->falselist, false_label);
-    to_emit = exp->var_name + " = " + type + " " + e3->var_name;
-    cb.emit(to_emit);
-    string next_label = cb.genLabel();
-    cb.bpatch(cb.makelist({location, FIRST}), next_label);
+    int loc = cb.emit("br label @");
+    string final_label = cb.genLabel();
+    exp->location_for_exp = cb.emit("br label @");
+    exp->label_for_exp = cb.genLabel();
+
+    cb.bpatch(cb.makelist({e1->location_for_exp, FIRST}), e2->label_for_exp);
+    cb.bpatch(cb.merge(cb.makelist({loc, FIRST}), cb.makelist({e2->location_for_exp, FIRST})), final_label);
+    cb.bpatch(cb.makelist({e3->location_for_exp, FIRST}), e3->label_for_exp);
+
+    cb.bpatch(e2->truelist, e1->label_for_exp);
+    cb.bpatch(e2->falselist, e3->label_for_exp);
 }
 
 void LLVM_Comp::startIF(Exp *exp)
@@ -360,6 +359,7 @@ void LLVM_Comp::startIF(Exp *exp)
         this->AddLabelAfterExpression(exp);
     }
     cb.bpatch(exp->truelist, exp->label);
+    cb.bpatch(cb.makelist({exp->location_for_exp, FIRST}), exp->label_for_exp);
 }
 
 void LLVM_Comp::endIF(Exp *exp, Statement *st)
@@ -422,11 +422,11 @@ void LLVM_Comp::openGlobalScope()
 {
     sym.openScope();
     CodeBuffer &cb = CodeBuffer::instance();
-    cb.emit("declare i32 @printf(i8*, ...)");
-    cb.emit("declare void @exit(i32)");
-    cb.emit("@.int_specifier = constant [4 x i8] c\"%d\\0A\\00\"");
-    cb.emit("@.str_specifier = constant [4 x i8] c\"%s\\0A\\00\"");
-    cb.emit("@.zero_division_str = internal constant [23 x i8] c\"Error division by zero\\00\"");
+    cb.emitGlobal("declare i32 @printf(i8*, ...)");
+    cb.emitGlobal("declare void @exit(i32)");
+    cb.emitGlobal("@.int_specifier = constant [4 x i8] c\"%d\\0A\\00\"");
+    cb.emitGlobal("@.str_specifier = constant [4 x i8] c\"%s\\0A\\00\"");
+    cb.emitGlobal("@.zero_division_str = internal constant [23 x i8] c\"Error division by zero\\00\"");
     string printi_code = "define void @printi(i32) {\n"
                          "%spec_ptr = getelementptr [4 x i8], [4 x i8]* @.int_specifier, i32 0, i32 0\n"
                          "call i32 (i8*, ...) @printf(i8* %spec_ptr, i32 %0)\n"

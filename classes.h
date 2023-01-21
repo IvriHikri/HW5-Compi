@@ -30,8 +30,11 @@ public:
     string var_name;
     string label;
 
+    // For Trinary
     int location_for_exp;
     string label_for_exp;
+    string actul_label_exp;
+    int actual_location_exp;
 
     vector<pair<int, BranchLabelIndex>> truelist;
     vector<pair<int, BranchLabelIndex>> falselist;
@@ -62,7 +65,7 @@ class FormalsList;
 
 class Id : public Node
 {
-    public:
+public:
     Id(string value) : Node(value) {}
 };
 
