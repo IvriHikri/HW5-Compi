@@ -61,6 +61,7 @@ public:
     string whichRelop(string relop, Var_Type type);
     string operationSize(Var_Type type);
     bool isBoolLiteral(string symbol);
+    bool isNumLiteral(string symbol);
     void mergeLists(Statement *sts, Statement *st);
     void openGlobalScope();
 };

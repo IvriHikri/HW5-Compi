@@ -65,7 +65,7 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
     comp.cb.bpatch(comp.cb.makelist({exp->location_for_exp, FIRST}), exp->label_for_exp);
-
+    comp.cb.bpatch(comp.cb.makelist({exp->actual_location_exp, FIRST}), exp->actul_label_exp);
     if (comp.sym.isExist(symbol->value))
     {
         errorDef(yylineno, symbol->value);
@@ -114,6 +114,7 @@ Statement::Statement(Id *symbol, Exp *exp)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
     comp.cb.bpatch(comp.cb.makelist({exp->location_for_exp, FIRST}), exp->label_for_exp);
+    comp.cb.bpatch(comp.cb.makelist({exp->actual_location_exp, FIRST}), exp->actul_label_exp);
 
     TableEntry *ent = comp.sym.getTableEntry(symbol->value);
     if (ent == nullptr || ent->getIsFunc())
@@ -146,6 +147,7 @@ Statement::Statement(Node *symbol, Exp *exp)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
     comp.cb.bpatch(comp.cb.makelist({exp->location_for_exp, FIRST}), exp->label_for_exp);
+    comp.cb.bpatch(comp.cb.makelist({exp->actual_location_exp, FIRST}), exp->actul_label_exp);
 
     if (symbol->value.compare("return") == 0)
     {
@@ -344,7 +346,15 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
     this->location_for_exp = comp.emit(exp_label);
     this->label_for_exp = comp.cb.genLabel();
     this->actul_label_exp = e1->actul_label_exp;
-    this->actual_location_exp = e1->location_for_exp;
+    this->actual_location_exp = e1->actual_location_exp;
+    if (!comp.isNumLiteral(e1->value))
+    {
+        comp.cb.bpatch(comp.cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
+    }
+    if (!comp.isNumLiteral(e2->value))
+    {
+        comp.cb.bpatch(comp.cb.makelist({e2->actual_location_exp, FIRST}), e2->actul_label_exp);
+    }
 
     if (!comp.sym.isValidTypesOperation(e1->type, e2->type))
     {
@@ -358,22 +368,6 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
 
     comp.BinopExp(this, e1, e2, n->value);
 }
-Exp::Exp(Call *c)
-{
-    LLVM_Comp &comp = LLVM_Comp::getInstance();
-    string exp_label = "br label @";
-    this->location_for_exp = comp.emit(exp_label);
-    this->label_for_exp = comp.cb.genLabel();
-    this->actul_label_exp = actul_label_exp;
-    this->actual_location_exp = location_for_exp;
-    this->value = c->value;
-    this->type = c->type;
-    this->var_name = c->var_name;
-    this->truelist = c->truelist;
-    this->falselist = c->falselist;
-    this->nextlist = c->nextlist;
-    this->label = c->label;
-}
 
 // EXP AND/OR/RELOP EXP
 Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
@@ -383,7 +377,16 @@ Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
     this->location_for_exp = comp.emit(exp_label);
     this->label_for_exp = comp.cb.genLabel();
     this->actul_label_exp = e1->actul_label_exp;
-    this->actual_location_exp = e1->location_for_exp;
+    this->actual_location_exp = e1->actual_location_exp;
+    
+    if (!comp.isBoolLiteral(e1->value) && !comp.isNumLiteral(e1->value))
+    {
+        comp.cb.bpatch(comp.cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
+    }
+    if (!comp.isBoolLiteral(e2->value) && !comp.isNumLiteral(e2->value))
+    {
+        comp.cb.bpatch(comp.cb.makelist({e2->actual_location_exp, FIRST}), e2->actul_label_exp);
+    }
 
     this->type = V_BOOL;
     if (e1->type == V_BOOL && e2->type == V_BOOL)
@@ -412,6 +415,23 @@ Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
     }
 }
 
+Exp::Exp(Call *c)
+{
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
+    string exp_label = "br label @";
+    this->location_for_exp = comp.emit(exp_label);
+    this->label_for_exp = comp.cb.genLabel();
+    this->actul_label_exp = label_for_exp;
+    this->actual_location_exp = location_for_exp;
+    this->value = c->value;
+    this->type = c->type;
+    this->var_name = c->var_name;
+    this->truelist = c->truelist;
+    this->falselist = c->falselist;
+    this->nextlist = c->nextlist;
+    this->label = c->label;
+}
+
 // NOT EXP
 Exp::Exp(Node *n, Exp *e)
 {
@@ -421,8 +441,8 @@ Exp::Exp(Node *n, Exp *e)
     string exp_label = "br label @";
     this->location_for_exp = comp.emit(exp_label);
     this->label_for_exp = comp.cb.genLabel();
-    this->actul_label_exp = label_for_exp;
-    this->actual_location_exp = location_for_exp;
+    this->actul_label_exp = e->actul_label_exp;
+    this->actual_location_exp = e->actual_location_exp;
 
     if (e->type != V_BOOL)
         errorMismatch(yylineno);
