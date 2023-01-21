@@ -78,7 +78,7 @@ Statement::Statement(Type *t, Id *symbol, Exp *exp)
     symbol->type = t->type;
     string to_emit_get = "";
     string to_emit_store = "";
-    if (t->type == V_BOOL && !comp.isBoolLiteral(exp->value))
+    if (t->type == V_BOOL && !comp.isBoolLiteral(exp->value) && exp->value != "not")
     {
         exp->var_name = comp.DeclareBool(exp);
         exp->var_name = comp.makeTruncZext(exp->var_name, "i1", "i32", "zext");
@@ -127,7 +127,7 @@ Statement::Statement(Id *symbol, Exp *exp)
         errorMismatch(yylineno);
     }
 
-    if (exp->type == V_BOOL && !comp.isBoolLiteral(exp->value))
+    if (exp->type == V_BOOL && !comp.isBoolLiteral(exp->value) && exp->value != "not")
     {
         exp->var_name = comp.DeclareBool(exp);
     }
@@ -275,7 +275,7 @@ Call::Call(Id *symbol, Explist *exp_list)
 Explist::Explist(Exp *exp)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
-    if (exp->type == V_BOOL && !(comp.isBoolLiteral(exp->value)))
+    if (exp->type == V_BOOL && !comp.isBoolLiteral(exp->value) && exp->value != "not")
     {
         comp.DecalreBoolArgFunc(exp);
     }
@@ -286,7 +286,7 @@ Explist::Explist(Exp *exp, Explist *exp_list)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
     this->exp_list = vector<Exp *>(exp_list->exp_list);
-    if (exp->type == V_BOOL && !(comp.isBoolLiteral(exp->value)))
+    if (exp->type == V_BOOL && !(comp.isBoolLiteral(exp->value) && exp->value != "not"))
     {
         comp.DecalreBoolArgFunc(exp);
     }
@@ -378,7 +378,7 @@ Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
     this->label_for_exp = comp.cb.genLabel();
     this->actul_label_exp = e1->actul_label_exp;
     this->actual_location_exp = e1->actual_location_exp;
-    
+
     if (!comp.isBoolLiteral(e1->value) && !comp.isNumLiteral(e1->value))
     {
         comp.cb.bpatch(comp.cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
@@ -457,9 +457,9 @@ Exp::Exp(Node *n, Exp *e)
 
     if (comp.isBoolLiteral(e->value))
     {
-        this->value = e->value == "true" ? "false" : "true";
+        this->value = "not";
         this->var_name = comp.freshVar();
-        string to_emit = this->var_name + " = add i1 0, " + ((this->value == "true") ? "1" : "0");
+        string to_emit = this->var_name + " = add i1 0, " + ((e->value == "true") ? "0" : "1");
         comp.emit(to_emit);
     }
 }
@@ -536,7 +536,7 @@ Exp::Exp(Id *id)
         }
     }
 
-    if (this->type == V_BOOL && !comp.isBoolLiteral(this->value))
+    if (this->type == V_BOOL && !comp.isBoolLiteral(this->value) && this->value != "not")
     {
         comp.CreateBranch(this);
         comp.AddLabelAfterExpression(this);

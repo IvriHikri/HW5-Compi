@@ -343,19 +343,23 @@ void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
     string check = "";
     int location = cb.emit("br label @");
     string label_before = cb.genLabel();
-    // cb.emit("this label is label_before");
     if (isBoolLiteral(e2->value))
     {
         CreateBranch(e2);
         check = cb.genLabel();
-        // cb.emit("this label is check");
     }
+    else
+    {
+        int location_for_check = cb.emit("br label @");
+        check = cb.genLabel();
+        cb.bpatch(cb.makelist({location_for_check, FIRST}), check);
+    }
+
     int loc = cb.emit("br label @");
     string final_label = cb.genLabel();
-    // cb.emit("this label is final_label");
+
     int loc2 = cb.emit("br label @");
     string phi_label = cb.genLabel();
-    // cb.emit("this label is phi_label");
 
     // Insert phi
     exp->var_name = freshVar();
@@ -399,6 +403,7 @@ void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
     else
     {
         cb.bpatch(cb.makelist({e3->actual_location_exp, FIRST}), e3->label_for_exp);
+        cb.bpatch(cb.makelist({e2->location_for_exp, FIRST}), e2->label_for_exp);
     }
 
     cb.bpatch(cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
@@ -407,6 +412,7 @@ void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
     // Fix true/false list for E2
     cb.bpatch(e2->truelist, e1->actul_label_exp);
     cb.bpatch(e2->falselist, e3->actul_label_exp);
+
     if (e1->type == V_BOOL)
     {
         exp->falselist = cb.merge(e1->falselist, e3->falselist);
@@ -420,7 +426,7 @@ void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
 void LLVM_Comp::startIF(Exp *exp)
 {
     sym.checkExpBool(exp);
-    if (isBoolLiteral(exp->value))
+    if (isBoolLiteral(exp->value) || exp->value == "not")
     {
         this->CreateBranch(exp);
         this->AddLabelAfterExpression(exp);
