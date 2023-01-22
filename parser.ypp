@@ -123,7 +123,7 @@ Type    :INT {$$ = new Type(V_INT);}//
         |BOOL {$$ = new Type(V_BOOL);}//
 
 Exp :LPAREN Exp RPAREN {$$ = new Exp((Exp*)$2);}//
-    |Exp IF LPAREN Exp RPAREN ELSE Exp TRINARY_END {$$ = new Exp ((Exp*)$1, (Exp*)$4, (Exp*)$7);} 
+    |Exp IF LPAREN Exp {if(comp.isBoolLiteral(((Exp*)$4)->value)){((Exp*)$4)->location_for_literal_in_trinary = comp.emit("br label @"); ((Exp*)$4)->label_for_literal_in_trinary = comp.cb.genLabel();}} RPAREN ELSE Exp TRINARY_END {$$ = new Exp ((Exp*)$1, (Exp*)$4, (Exp*)$8);} 
     |Exp BINOP Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //
     |Exp BINOP_MUL_DIV Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //
     |ID {$$ = new Exp ((Id*)$1);} 
@@ -140,7 +140,6 @@ Exp :LPAREN Exp RPAREN {$$ = new Exp((Exp*)$2);}//
     |Exp RELOP_EQ Exp {$$ = new Exp (V_BOOL, (Exp*)$1, $2, (Exp*)$3);}//
     |LPAREN Type RPAREN Exp {$$ = new Exp ((Type*)$2,(Exp*)$4);} //
 
-N: /*epsilon*/ {$$->location_for_exp = comp.emit("br label @"); $$->label_for_exp = comp.cb.genLabel(); comp.cb.bpatch(comp.cb.makelist({$$->location_for_exp,FIRST}), $$->label_for_exp);}
 
 TRINARY_END : /*epsilon*/ %prec TRI {}
 OPEN_SCOPE : /*epsilon */ {comp.sym.openScope();}

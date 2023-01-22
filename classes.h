@@ -30,15 +30,16 @@ public:
     string var_name;
     string label;
     string name;
-    
+
     // For Trinary
     int location_for_exp;
     string label_for_exp;
     string actul_label_exp;
     int actual_location_exp;
     bool is_trinary;
-    string trinary_canony_label;
     bool is_relop;
+    int location_for_literal_in_trinary;
+    string label_for_literal_in_trinary;
 
     vector<pair<int, BranchLabelIndex>> truelist;
     vector<pair<int, BranchLabelIndex>> falselist;

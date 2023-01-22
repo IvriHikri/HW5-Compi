@@ -358,10 +358,10 @@ void LLVM_Comp::callFunc(Call *call, string func_name, Var_Type retrunType, vect
 void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
 {
     exp->is_trinary = true;
+    exp->label_for_literal_in_trinary = e2->actul_label_exp;
     string check = "";
     int location = cb.emit("br label @");
     string label_before = cb.genLabel();
-    exp->trinary_canony_label = label_before;
     if (isBoolLiteral(e2->value))
     {
         CreateBranch(e2);
@@ -419,10 +419,11 @@ void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
     {
         if (e3->is_trinary)
         {
-            cb.bpatch(cb.makelist({e3->actual_location_exp, FIRST}), label_before);
+            cb.bpatch(cb.makelist({e2->location_for_literal_in_trinary, FIRST}), label_before);
         }
         else
         {
+            cb.bpatch(cb.makelist({e2->location_for_literal_in_trinary, FIRST}), e2->label_for_literal_in_trinary);
             cb.bpatch(cb.makelist({e3->actual_location_exp, FIRST}), label_before);
         }
     }
@@ -444,7 +445,7 @@ void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
     {
         if (isBoolLiteral(e2->value))
         {
-            cb.bpatch(e2->falselist, e3->actul_label_exp);
+            cb.bpatch(e2->falselist, e3->label_for_literal_in_trinary);
         }
         else if (e2->is_relop)
         {
