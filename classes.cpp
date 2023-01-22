@@ -175,6 +175,8 @@ Statement::Statement(Node *symbol, Exp *exp)
 //
 Statement::Statement(Call *call)
 {
+    LLVM_Comp &comp = LLVM_Comp::getInstance();
+    comp.cb.bpatch(comp.cb.makelist({call->actual_location_exp, FIRST}), call->actul_label_exp);
     this->value = call->value;
     this->type = call->type;
 }
@@ -346,11 +348,11 @@ Exp::Exp(Exp *e1, Node *n, Exp *e2)
     this->label_for_exp = comp.cb.genLabel();
     this->actul_label_exp = e1->actul_label_exp;
     this->actual_location_exp = e1->actual_location_exp;
-    if (!comp.isNumLiteral(e1->value))
+    if (!comp.isNumLiteral(e1->value) && !comp.sym.isExist(e1->name))
     {
         comp.cb.bpatch(comp.cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
     }
-    if (!comp.isNumLiteral(e2->value))
+    if (!comp.isNumLiteral(e2->value) && !comp.sym.isExist(e2->name))
     {
         comp.cb.bpatch(comp.cb.makelist({e2->actual_location_exp, FIRST}), e2->actul_label_exp);
     }
@@ -377,12 +379,11 @@ Exp::Exp(Var_Type type, Exp *e1, Node *n1, Exp *e2)
     this->label_for_exp = comp.cb.genLabel();
     this->actul_label_exp = e1->actul_label_exp;
     this->actual_location_exp = e1->actual_location_exp;
-
-    if (!comp.isBoolLiteral(e1->value) && !comp.isNumLiteral(e1->value))
+    if (!comp.isBoolLiteral(e1->value) && !comp.isNumLiteral(e1->value) && !comp.sym.isExist(e1->name))
     {
         comp.cb.bpatch(comp.cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
     }
-    if (!comp.isBoolLiteral(e2->value) && !comp.isNumLiteral(e2->value))
+    if (!comp.isBoolLiteral(e2->value) && !comp.isNumLiteral(e2->value) && !comp.sym.isExist(e2->name))
     {
         comp.cb.bpatch(comp.cb.makelist({e2->actual_location_exp, FIRST}), e2->actul_label_exp);
     }
@@ -420,8 +421,8 @@ Exp::Exp(Call *c)
     string exp_label = "br label @";
     this->location_for_exp = comp.emit(exp_label);
     this->label_for_exp = comp.cb.genLabel();
-    this->actul_label_exp = this->label_for_exp;
-    this->actual_location_exp = this->location_for_exp;
+    this->actul_label_exp = c->actul_label_exp;
+    this->actual_location_exp = c->actual_location_exp;
     this->value = c->value;
     this->type = c->type;
     this->var_name = c->var_name;
@@ -468,7 +469,7 @@ Exp::Exp(Type *t, Exp *e)
 {
     LLVM_Comp &comp = LLVM_Comp::getInstance();
     comp.cb.bpatch(comp.cb.makelist({e->location_for_exp, FIRST}), e->label_for_exp);
-    if (!comp.isBoolLiteral(e->value) && !comp.isNumLiteral(e->value))
+    if (!comp.isBoolLiteral(e->value) && !comp.isNumLiteral(e->value) && !comp.sym.isExist(e->name))
     {
         comp.cb.bpatch(comp.cb.makelist({e->actual_location_exp, FIRST}), e->actul_label_exp);
     }
@@ -489,6 +490,7 @@ Exp::Exp(Type *t, Exp *e)
     this->truelist = e->truelist;
     this->falselist = e->falselist;
     this->nextlist = e->nextlist;
+    this->label = e->label;
 
     string v_name = e->var_name;
     if (t->type == V_INT && e->type == V_BYTE)
@@ -522,6 +524,7 @@ Exp::Exp(Id *id)
     }
     this->value = ent->getValue();
     this->type = ent->getTypes()[0];
+    this->name = ent->getName();
     int offset = ent->getOffset();
     if (offset < 0)
     {

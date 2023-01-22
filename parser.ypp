@@ -15,8 +15,50 @@
         LLVM_Comp &comp = LLVM_Comp::getInstance();
 %}
 
+%token NUM
+%token VOID
+%token INT
+%token BYTE
+%token B
+%token BOOL
 
-%nonassoc VOID INT BYTE B BOOL
+%token TRUE
+%token FALSE
+%token RETURN
+
+%token WHILE
+%token BREAK
+%token CONTINUE
+%token SC
+%token COMMA
+%token LBRACE
+%token RBRACE
+%token ID
+%token STRING
+
+%nonassoc TRI
+%nonassoc IF
+
+%left ASSIGN
+
+%left OR
+%left AND
+
+%left RELOP_EQ 
+%left RELOP
+
+%left BINOP
+%left BINOP_MUL_DIV
+
+%right NOT
+
+%left RPAREN
+%left LPAREN
+
+%nonassoc ELSE
+
+
+/*%nonassoc VOID INT BYTE B BOOL
 %right ID NUM STRING
 %right ASSIGN
 %left OR
@@ -28,7 +70,7 @@
 %left BINOP_MUL_DIV
 %right NOT
 %left LPAREN RPAREN LBRACE RBRACE SC
-%nonassoc ELSE
+%nonassoc ELSE*/
 
 %%
 
@@ -81,7 +123,7 @@ Type    :INT {$$ = new Type(V_INT);}//
         |BOOL {$$ = new Type(V_BOOL);}//
 
 Exp :LPAREN Exp RPAREN {$$ = new Exp((Exp*)$2);}//
-    |Exp IF LPAREN Exp RPAREN ELSE Exp {$$ = new Exp ((Exp*)$1, (Exp*)$4, (Exp*)$7);} %prec IF 
+    |Exp IF LPAREN Exp RPAREN ELSE Exp TRINARY_END {$$ = new Exp ((Exp*)$1, (Exp*)$4, (Exp*)$7);} 
     |Exp BINOP Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //
     |Exp BINOP_MUL_DIV Exp {$$ = new Exp ((Exp*)$1, $2, (Exp*)$3);} //
     |ID {$$ = new Exp ((Id*)$1);} 
@@ -98,7 +140,9 @@ Exp :LPAREN Exp RPAREN {$$ = new Exp((Exp*)$2);}//
     |Exp RELOP_EQ Exp {$$ = new Exp (V_BOOL, (Exp*)$1, $2, (Exp*)$3);}//
     |LPAREN Type RPAREN Exp {$$ = new Exp ((Type*)$2,(Exp*)$4);} //
 
+N: /*epsilon*/ {$$->location_for_exp = comp.emit("br label @"); $$->label_for_exp = comp.cb.genLabel(); comp.cb.bpatch(comp.cb.makelist({$$->location_for_exp,FIRST}), $$->label_for_exp);}
 
+TRINARY_END : /*epsilon*/ %prec TRI {}
 OPEN_SCOPE : /*epsilon */ {comp.sym.openScope();}
 CLOSE_SCOPE: /*epsilon */ {comp.sym.closeScope();}
 %%

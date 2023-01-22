@@ -154,6 +154,7 @@ void LLVM_Comp::OrExp(Exp *exp, Exp *e1, Exp *e2)
 
 void LLVM_Comp::RelopExp(Exp *exp, Exp *e1, Exp *e2, string rel)
 {
+    exp->is_relop = true;
     cb.bpatch(cb.makelist({e2->location_for_exp, FIRST}), e2->label_for_exp);
 
     Var_Type type = (e1->type == V_BYTE && e2->type == V_BYTE) ? V_BYTE : V_INT;
@@ -309,6 +310,8 @@ void LLVM_Comp::callFunc(Call *call, string func_name, Var_Type retrunType, vect
     TableEntry *ent = sym.getTableEntry(func_name);
     int index = 0;
     std::string code = "";
+    call->actual_location_exp = cb.emit("br label @");
+    call->actul_label_exp = cb.genLabel();
     if (call->type != V_VOID)
     {
         call->var_name = freshVar();
@@ -321,8 +324,15 @@ void LLVM_Comp::callFunc(Call *call, string func_name, Var_Type retrunType, vect
     {
         for (Exp *e : arg_list)
         {
-            cb.bpatch(cb.makelist({e->location_for_exp, FIRST}), e->label_for_exp);
-            cb.bpatch(cb.makelist({e->actual_location_exp, FIRST}), e->actul_label_exp);
+            if (e != arg_list[0] || e->actual_location_exp != e->location_for_exp)
+            {
+                cb.bpatch(cb.makelist({e->location_for_exp, FIRST}), e->label_for_exp);
+            }
+            if (e != arg_list[0])
+            {
+                cb.bpatch(cb.makelist({e->actual_location_exp, FIRST}), e->actul_label_exp);
+            }
+
             if (temp[index] == V_INT && e->type == V_BYTE)
             {
                 e->var_name = makeTruncZext(e->var_name, "i8", "i32", "zext");
@@ -336,13 +346,22 @@ void LLVM_Comp::callFunc(Call *call, string func_name, Var_Type retrunType, vect
     }
     code += ")";
     cb.emit(code);
+
+    if (arg_list.size() != 0)
+    {
+        cb.bpatch(cb.makelist({call->actual_location_exp, FIRST}), call->actul_label_exp);
+        call->actual_location_exp = arg_list[0]->actual_location_exp;
+        call->actul_label_exp = arg_list[0]->actul_label_exp;
+    }
 }
 
 void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
 {
+    exp->is_trinary = true;
     string check = "";
     int location = cb.emit("br label @");
     string label_before = cb.genLabel();
+    exp->trinary_canony_label = label_before;
     if (isBoolLiteral(e2->value))
     {
         CreateBranch(e2);
@@ -384,7 +403,7 @@ void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
     exp->label_for_exp = cb.genLabel();
     // cb.emit("this label is label_for_exp(Trinary)");
     exp->actul_label_exp = e1->actul_label_exp;
-    exp->actual_location_exp = e1->location_for_exp;
+    exp->actual_location_exp = e1->actual_location_exp;
 
     // Before E1 go to E2
     cb.bpatch(cb.makelist({e1->actual_location_exp, FIRST}), e2->actul_label_exp);
@@ -398,20 +417,50 @@ void LLVM_Comp::TrinaryExp(Exp *exp, Exp *e1, Exp *e2, Exp *e3)
     // After E2 we go according to true/false lists but need to bpatch before E3
     if (isBoolLiteral(e2->value))
     {
-        cb.bpatch(cb.makelist({e3->actual_location_exp, FIRST}), label_before);
+        if (e3->is_trinary)
+        {
+            cb.bpatch(cb.makelist({e3->actual_location_exp, FIRST}), label_before);
+        }
+        else
+        {
+            cb.bpatch(cb.makelist({e3->actual_location_exp, FIRST}), label_before);
+        }
     }
     else
     {
-        cb.bpatch(cb.makelist({e3->actual_location_exp, FIRST}), e3->label_for_exp);
+        cb.bpatch(cb.makelist({e3->actual_location_exp, FIRST}), e3->actul_label_exp);
         cb.bpatch(cb.makelist({e2->location_for_exp, FIRST}), e2->label_for_exp);
     }
+    // cout << "e1 value is " << e1->value << ", e1 name is " << e1->name << endl;
 
-    cb.bpatch(cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
+    if (!isBoolLiteral(e1->value) && !isNumLiteral(e1->value) && !sym.isExist(e1->name))
+    {
+        cb.bpatch(cb.makelist({e1->location_for_exp, FIRST}), e1->label_for_exp);
+    }
+
     cb.bpatch(cb.makelist({e3->location_for_exp, FIRST}), e3->label_for_exp);
 
-    // Fix true/false list for E2
+    if (e3->is_trinary)
+    {
+        if (isBoolLiteral(e2->value))
+        {
+            cb.bpatch(e2->falselist, e3->actul_label_exp);
+        }
+        else if (e2->is_relop)
+        {
+            cb.bpatch(e2->falselist, e2->label);
+        }
+        else
+        {
+            cb.bpatch(e2->falselist, e2->label_for_exp);
+        }
+    }
+    else
+    {
+        cb.bpatch(e2->falselist, e3->actul_label_exp);
+    }
+
     cb.bpatch(e2->truelist, e1->actul_label_exp);
-    cb.bpatch(e2->falselist, e3->actul_label_exp);
 
     if (e1->type == V_BOOL)
     {
