@@ -310,6 +310,10 @@ Exp::Exp(Exp *exp)
     this->label_for_exp = exp->label_for_exp;
     this->actul_label_exp = exp->actul_label_exp;
     this->actual_location_exp = exp->actual_location_exp;
+    this->label_for_literal_in_trinary = exp->label_for_literal_in_trinary;
+    this->location_for_literal_in_trinary = exp->location_for_literal_in_trinary;
+    this->is_relop = exp->is_relop;
+    this->is_trinary = exp->is_trinary;
 }
 
 // Exp IF EXP else EXP
@@ -430,6 +434,10 @@ Exp::Exp(Call *c)
     this->falselist = c->falselist;
     this->nextlist = c->nextlist;
     this->label = c->label;
+    this->label_for_literal_in_trinary = c->label_for_literal_in_trinary;
+    this->location_for_literal_in_trinary = c->location_for_literal_in_trinary;
+    this->is_relop = c->is_relop;
+    this->is_trinary = c->is_trinary;
 }
 
 // NOT EXP
@@ -443,6 +451,10 @@ Exp::Exp(Node *n, Exp *e)
     this->label_for_exp = comp.cb.genLabel();
     this->actul_label_exp = e->actul_label_exp;
     this->actual_location_exp = e->actual_location_exp;
+    this->label_for_literal_in_trinary = e->label_for_literal_in_trinary;
+    this->location_for_literal_in_trinary = e->location_for_literal_in_trinary;
+    this->is_relop = e->is_relop;
+    this->is_trinary = e->is_trinary;
 
     if (e->type != V_BOOL)
         errorMismatch(yylineno);
@@ -478,6 +490,10 @@ Exp::Exp(Type *t, Exp *e)
     this->label_for_exp = comp.cb.genLabel();
     this->actul_label_exp = label_for_exp;
     this->actual_location_exp = location_for_exp;
+    this->label_for_literal_in_trinary = e->label_for_literal_in_trinary;
+    this->location_for_literal_in_trinary = e->location_for_literal_in_trinary;
+    this->is_relop = e->is_relop;
+    this->is_trinary = e->is_trinary;
 
     if (t->type != e->type)
     {
